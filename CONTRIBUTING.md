@@ -14,7 +14,7 @@ Note that not all features are within scope for Azalea, but many features can st
 
 ## Things to watch out for
 
-If you're working with low-level physics or packet related code, it's quite easy to accidentally make a change that causes Azalea to start flagging anticheats. If you're unsure about a change, you're advised to reference the decompiled vanilla Minecraft source code and test with an anticheat such as [GrimAC](https://modrinth.com/plugin/grimac) (Grim is preferred as it's relatively strict and is used on some popular anarchy servers).
+If you're working with low-level physics or packet related code, it's quite easy to accidentally make a change that causes Azalea to start flagging anticheats. If you're unsure about a change, you're advised to reference the decompiled vanilla Minecraft source code and test with an anticheat such as [GrimAC](https://modrinth.com/plugin/grimac) (Grim is preferred as it's relatively strict and is used on some popular anarchy servers). Math should also match the precision of vanilla (preserve `double`/`float` precision, and Minecraft's own `Mth` math library).
 
 The second major thing to watch out for is accidentally introducing performance regressions. Certain parts of Azalea are highly performance sensitive (notably, the pathfinder), so most changes in these areas should be benchmarked to avoid accidentally hurting performance.
 
