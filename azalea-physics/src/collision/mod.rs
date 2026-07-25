@@ -30,7 +30,11 @@ use tracing::warn;
 
 use self::world_collisions::get_block_collisions;
 use crate::{
-    client_movement::ClientMovementState, collision::entity_collisions::AabbQuery,
+    client_movement::ClientMovementState,
+    collision::{
+        entity_collisions::AabbQuery,
+        world_collisions::{EntityCollisionContext, find_supporting_block},
+    },
     travel::no_collision,
 };
 
@@ -185,7 +189,17 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     let vertical_collision = movement.y != collide_result.y;
     physics.vertical_collision = vertical_collision;
     let on_ground = vertical_collision && movement.y < 0.;
-    physics.set_on_ground(on_ground);
+    physics.set_on_ground(
+        on_ground,
+        calculate_supporting_block(
+            on_ground,
+            Some(movement),
+            ***position,
+            physics,
+            world,
+            ctx.source_entity,
+        ),
+    );
 
     // TODO: minecraft checks for a "minor" horizontal collision here
 
@@ -244,6 +258,53 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     // if (this.isOnFire() && (this.isInPowderSnow ||
     // this.isInWaterRainOrBubble())) {    this.setRemainingFireTicks(-this.
     // getFireImmuneTicks()); }
+}
+
+
+/// vanilla's Entity.checkSupportingBlock
+pub fn calculate_supporting_block(
+    on_ground: bool,
+    movement: Option<Vec3>,
+    position: Vec3,
+    physics: &Physics,
+    world: &World,
+    source_entity: Entity,
+) -> Option<BlockPos> {
+    if on_ground {
+        return None;
+    }
+
+    let test_box = {
+        let mut box_ = physics.bounding_box;
+        box_.max.y = box_.min.y;
+        box_.min.y = box_.min.y - 1e-6;
+        box_
+    }; // small volume under player foot
+
+    let pos = find_supporting_block(
+        world,
+        test_box,
+        position,
+        EntityCollisionContext::of(Some(source_entity)),
+    );
+
+    if pos.is_some() || physics.main_supporting_pos().is_none() {
+        pos
+    } else if let Some(movement) = movement {
+        let fallback_testbox = test_box.move_relative(Vec3 {
+            x: -movement.x,
+            y: 0.0,
+            z: -movement.z,
+        });
+        find_supporting_block(
+            world,
+            fallback_testbox,
+            position,
+            EntityCollisionContext::of(Some(source_entity)),
+        )
+    } else {
+        pos
+    }
 }
 
 fn check_fall_damage(

@@ -283,6 +283,8 @@ pub struct Physics {
 
     on_ground: bool,
     last_on_ground: bool,
+    // Client side support blockpos is update together with on_ground, so it's put here
+    main_supporting_blockpos: Option<BlockPos>,
 
     /// The number of ticks until we jump again, if the jump key is being held.
     ///
@@ -325,6 +327,7 @@ impl Physics {
 
             on_ground: false,
             last_on_ground: false,
+            main_supporting_blockpos: None,
 
             no_jump_delay: 0,
 
@@ -348,10 +351,16 @@ impl Physics {
     pub fn on_ground(&self) -> bool {
         self.on_ground
     }
-    /// Updates [`Self::on_ground`] and [`Self::last_on_ground`].
-    pub fn set_on_ground(&mut self, on_ground: bool) {
+    /// Updates [`Self::on_ground`], [`Self::last_on_ground`] and
+    /// [`Self::main_supporting_blockpos`]. roughly
+    /// `Entity.setOnGround`/`Entity.setOnGroundWithMovement` in vanilla
+    /// Forcing the supporting_block to be updated together with on_gound just
+    /// like vanilla should make it harder to accidentally updated on_ground but
+    /// not supporting block
+    pub fn set_on_ground(&mut self, on_ground: bool, supporting_block: Option<BlockPos>) {
         self.last_on_ground = self.on_ground;
         self.on_ground = on_ground;
+        self.main_supporting_blockpos = supporting_block;
     }
 
     /// The last value of the on_ground value.
@@ -382,6 +391,10 @@ impl Physics {
 
     pub fn set_old_pos(&mut self, pos: Position) {
         self.old_position = *pos;
+    }
+
+    pub fn main_supporting_pos(&self) -> Option<BlockPos> {
+        self.main_supporting_blockpos
     }
 }
 

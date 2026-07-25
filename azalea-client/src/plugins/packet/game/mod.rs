@@ -16,6 +16,7 @@ use azalea_entity::{
     inventory::Inventory,
     metadata::{Health, apply_metadata},
 };
+use azalea_physics::collision::calculate_supporting_block;
 use azalea_protocol::{
     common::movements::MoveFlags,
     packets::{
@@ -1530,7 +1531,18 @@ impl GamePacketHandler<'_> {
                     return;
                 }
 
-                physics.set_on_ground(new_on_ground);
+                let block = calculate_supporting_block(
+                    new_on_ground,
+                    None,
+                    **position,
+                    &*physics,
+                    &*world_holder.shared.read(), /* should it really be `shared` though? should
+                                                   * we change all the type in the chain to
+                                                   * partial world? typewise, this compiles, but
+                                                   * logically doesn't make sense */
+                    entity,
+                );
+                physics.set_on_ground(new_on_ground, block);
 
                 if **position != new_position {
                     **position = new_position;
@@ -1710,5 +1722,17 @@ fn move_entity(
         }
     }
 
-    physics.set_on_ground(p.on_ground);
+    let block = calculate_supporting_block(
+            p.on_ground,
+            None,
+            **position,
+            &physics,
+            &world_holder.shared.read(),
+            entity,
+        );
+
+    physics.set_on_ground(
+        p.on_ground,
+        block,
+    );
 }
