@@ -203,7 +203,7 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
 
     // TODO: minecraft checks for a "minor" horizontal collision here
 
-    let block_pos_below = azalea_entity::on_pos_legacy(&world.chunks, **position);
+    let block_pos_below = azalea_entity::on_pos_legacy(&world.chunks, **position, physics);
     let block_state_below = world.get_block_state(block_pos_below).unwrap_or_default();
 
     check_fall_damage(
