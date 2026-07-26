@@ -270,7 +270,7 @@ pub fn calculate_supporting_block(
     world: &World,
     source_entity: Entity,
 ) -> Option<BlockPos> {
-    if on_ground {
+    if !on_ground {
         return None;
     }
 
