@@ -321,7 +321,7 @@ pub fn on_pos(
     physics: &Physics,
 ) -> BlockPos {
     if let Some(main_supporting_block) = physics.main_supporting_pos() {
-        if !(offset < 1e-5f32) {
+        if !(offset > 1e-5f32) {
             main_supporting_block
         } else {
             let block_state_below = chunk_storage
