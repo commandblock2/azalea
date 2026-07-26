@@ -167,10 +167,13 @@ pub fn check_node_reached(
                     let x_difference_from_center = position.x - (movement.target.x as f64 + 0.5);
                     let z_difference_from_center = position.z - (movement.target.z as f64 + 0.5);
 
-                    let block_pos_below = get_block_pos_below_that_affects_movement(*position);
-
                     let block_below = {
                         let world = world.read();
+                        let block_pos_below = get_block_pos_below_that_affects_movement(
+                            &world.chunks,
+                            *position,
+                            physics,
+                        );
                         world
                             .chunks
                             .get_block_state(block_pos_below)

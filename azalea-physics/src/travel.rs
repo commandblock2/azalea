@@ -110,7 +110,8 @@ pub fn travel(
 fn travel_in_air(ctx: &mut MoveCtx) {
     let gravity = get_effective_gravity();
 
-    let block_pos_below = get_block_pos_below_that_affects_movement(*ctx.position);
+    let block_pos_below =
+        get_block_pos_below_that_affects_movement(&ctx.world.chunks, *ctx.position, ctx.physics);
 
     let block_below = ctx
         .world

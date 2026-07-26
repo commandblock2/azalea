@@ -18,10 +18,10 @@ use azalea_core::{
 use azalea_entity::{
     ActiveEffects, Attributes, EntityKindComponent, HasClientLoaded, Jumping, LocalEntity,
     LookDirection, OnClimbable, Physics, Pose, Position, dimensions::EntityDimensions,
-    metadata::Sprinting, move_relative,
+    metadata::Sprinting, move_relative, on_pos,
 };
 use azalea_registry::builtin::{BlockKind, EntityKind, MobEffect};
-use azalea_world::{World, WorldName, Worlds};
+use azalea_world::{ChunkStorage, World, WorldName, Worlds};
 use bevy_app::{App, Plugin, Update};
 use bevy_ecs::prelude::*;
 use clip::box_traverse_blocks;
@@ -361,7 +361,7 @@ pub fn jump_from_ground(
         .expect("All entities should be in a valid world");
     let world = world_lock.read();
 
-    let base_jump = jump_power(&world, position);
+    let base_jump = jump_power(&world, position, physics);
     let jump_power = base_jump + jump_boost_power(active_effects);
     if jump_power <= 1.0E-5 {
         return;
@@ -392,13 +392,12 @@ pub fn update_old_position(mut query: Query<(&mut Physics, &Position)>) {
     }
 }
 
-pub fn get_block_pos_below_that_affects_movement(position: Position) -> BlockPos {
-    BlockPos::new(
-        position.x.floor() as i32,
-        // TODO: this uses bounding_box.min_y instead of position.y
-        (position.y - 0.5f64).floor() as i32,
-        position.z.floor() as i32,
-    )
+pub fn get_block_pos_below_that_affects_movement(
+    chunk_storage: &ChunkStorage,
+    position: Position,
+    physics: &Physics,
+) -> BlockPos {
+    on_pos(0.500001f32, chunk_storage, position, physics)
 }
 
 fn handle_relative_friction_and_calculate_movement(ctx: &mut MoveCtx, block_friction: f32) -> Vec3 {
@@ -501,11 +500,11 @@ fn get_friction_influenced_speed(
 
 /// Returns the what the entity's jump should be multiplied by based on the
 /// block they're standing on.
-fn block_jump_factor(world: &World, position: Position) -> f32 {
+fn block_jump_factor(world: &World, position: Position, physics: &Physics) -> f32 {
     let block_at_pos = world.chunks.get_block_state(position.into());
     let block_below = world
         .chunks
-        .get_block_state(get_block_pos_below_that_affects_movement(position));
+        .get_block_state(get_block_pos_below_that_affects_movement(&world.chunks, position, physics));
 
     let block_at_pos_jump_factor = if let Some(block) = block_at_pos {
         block.behavior().jump_factor
@@ -529,8 +528,8 @@ fn block_jump_factor(world: &World, position: Position) -> f32 {
 // public double getJumpBoostPower() {
 //     return this.hasEffect(MobEffects.JUMP) ? (double)(0.1F *
 // (float)(this.getEffect(MobEffects.JUMP).getAmplifier() + 1)) : 0.0D; }
-fn jump_power(world: &World, position: Position) -> f32 {
-    0.42 * block_jump_factor(world, position)
+fn jump_power(world: &World, position: Position, physics: &Physics) -> f32 {
+    0.42 * block_jump_factor(world, position, physics)
 }
 
 fn jump_boost_power(active_effects: &ActiveEffects) -> f32 {
