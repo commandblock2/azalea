@@ -16,7 +16,7 @@ use azalea_entity::{
     inventory::Inventory,
     metadata::{Health, apply_metadata},
 };
-use azalea_physics::collision::calculate_supporting_block;
+use azalea_physics::collision::calculate_supporting_block_at_current_pos;
 use azalea_protocol::{
     common::movements::MoveFlags,
     packets::{
@@ -1531,7 +1531,7 @@ impl GamePacketHandler<'_> {
                     return;
                 }
 
-                let block = calculate_supporting_block(
+                let block = calculate_supporting_block_at_current_pos(
                     new_on_ground,
                     None,
                     **position,
@@ -1722,7 +1722,7 @@ fn move_entity(
         }
     }
 
-    let block = calculate_supporting_block(
+    let block = calculate_supporting_block_at_current_pos(
             p.on_ground,
             None,
             **position,

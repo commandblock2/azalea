@@ -204,7 +204,7 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     let on_ground = vertical_collision && movement.y < 0.;
     physics.set_on_ground(
         on_ground,
-        calculate_supporting_block(
+        calculate_supporting_block_at_current_pos(
             on_ground,
             Some(movement),
             ***position,
@@ -274,7 +274,7 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
 }
 
 /// vanilla's Entity.checkSupportingBlock
-pub fn calculate_supporting_block(
+pub fn calculate_supporting_block_at_current_pos(
     on_ground: bool,
     movement: Option<Vec3>,
     position: Vec3,

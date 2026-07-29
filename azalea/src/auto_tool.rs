@@ -55,7 +55,7 @@ impl Client {
 /// care about those things.
 pub fn best_tool_in_hotbar_for_block(block: BlockState, menu: &Menu) -> BestToolResult {
     let mut physics = Physics::default();
-    physics.set_on_ground(true, SupportingBlockCtx::new());
+    physics.set_on_ground(true, SupportingBlockCtx::default());
 
     let inactive_effects = ActiveEffects::default();
     accurate_best_tool_in_hotbar_for_block(

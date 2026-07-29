@@ -260,11 +260,6 @@ pub struct SupportingBlockCtx {
     pub on_ground_no_supporting_block: bool,
 }
 
-impl SupportingBlockCtx {
-    pub fn new() -> SupportingBlockCtx {
-        Self { main_supporting_blockpos: None, on_ground_no_supporting_block: false }
-    }
-}
 
 /// The physics data relating to the entity, such as position, velocity, and
 /// bounding box.
@@ -339,7 +334,7 @@ impl Physics {
 
             on_ground: false,
             last_on_ground: false,
-            supporting_ctx: SupportingBlockCtx::new(),
+            supporting_ctx: SupportingBlockCtx::default(),
 
             no_jump_delay: 0,
 
