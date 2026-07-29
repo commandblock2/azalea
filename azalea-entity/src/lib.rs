@@ -254,6 +254,18 @@ impl Hash for LookDirection {
 }
 impl Eq for LookDirection {}
 
+#[derive(Clone, Debug, Default)]
+pub struct SupportingBlockCtx {
+    pub main_supporting_blockpos: Option<BlockPos>,
+    pub on_ground_no_supporing_block: bool,
+}
+
+impl SupportingBlockCtx {
+    pub fn new() -> SupportingBlockCtx {
+        Self { main_supporting_blockpos: None, on_ground_no_supporing_block: false }
+    }
+}
+
 /// The physics data relating to the entity, such as position, velocity, and
 /// bounding box.
 #[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
@@ -284,7 +296,7 @@ pub struct Physics {
     on_ground: bool,
     last_on_ground: bool,
     // Client side support blockpos is update together with on_ground, so it's put here
-    main_supporting_blockpos: Option<BlockPos>,
+    supporting_ctx: SupportingBlockCtx,
 
     /// The number of ticks until we jump again, if the jump key is being held.
     ///
@@ -327,7 +339,7 @@ impl Physics {
 
             on_ground: false,
             last_on_ground: false,
-            main_supporting_blockpos: None,
+            supporting_ctx: SupportingBlockCtx::new(),
 
             no_jump_delay: 0,
 
@@ -357,10 +369,10 @@ impl Physics {
     /// Forcing the supporting_block to be updated together with on_gound just
     /// like vanilla should make it harder to accidentally updated on_ground but
     /// not supporting block
-    pub fn set_on_ground(&mut self, on_ground: bool, supporting_block: Option<BlockPos>) {
+    pub fn set_on_ground(&mut self, on_ground: bool, supporting_ctx: SupportingBlockCtx) {
         self.last_on_ground = self.on_ground;
         self.on_ground = on_ground;
-        self.main_supporting_blockpos = supporting_block;
+        self.supporting_ctx = supporting_ctx;
     }
 
     /// The last value of the on_ground value.
@@ -393,8 +405,8 @@ impl Physics {
         self.old_position = *pos;
     }
 
-    pub fn main_supporting_pos(&self) -> Option<BlockPos> {
-        self.main_supporting_blockpos
+    pub fn supporting_ctx(&self) -> &SupportingBlockCtx {
+        &self.supporting_ctx
     }
 }
 

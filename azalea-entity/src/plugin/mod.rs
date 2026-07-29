@@ -320,7 +320,7 @@ pub fn on_pos(
     pos: Position,
     physics: &Physics,
 ) -> BlockPos {
-    if let Some(main_supporting_block) = physics.main_supporting_pos() {
+    if let Some(main_supporting_block) = physics.supporting_ctx().main_supporting_blockpos {
         if !(offset > 1e-5f32) {
             main_supporting_block
         } else {

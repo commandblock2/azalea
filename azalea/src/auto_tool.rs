@@ -1,6 +1,6 @@
 use azalea_block::{BlockState, fluid_state::FluidKind};
 use azalea_core::position::BlockPos;
-use azalea_entity::{ActiveEffects, Attributes, FluidOnEyes, Physics, inventory::Inventory};
+use azalea_entity::{ActiveEffects, Attributes, FluidOnEyes, Physics, SupportingBlockCtx, inventory::Inventory};
 use azalea_inventory::{ItemStack, Menu, components};
 use azalea_registry::builtin::{BlockKind, EntityKind};
 
@@ -55,7 +55,7 @@ impl Client {
 /// care about those things.
 pub fn best_tool_in_hotbar_for_block(block: BlockState, menu: &Menu) -> BestToolResult {
     let mut physics = Physics::default();
-    physics.set_on_ground(true, None);
+    physics.set_on_ground(true, SupportingBlockCtx::new());
 
     let inactive_effects = ActiveEffects::default();
     accurate_best_tool_in_hotbar_for_block(

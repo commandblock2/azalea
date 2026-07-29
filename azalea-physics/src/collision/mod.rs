@@ -17,7 +17,7 @@ use azalea_core::{
 };
 use azalea_entity::{
     Attributes, Jumping, LookDirection, OnClimbable, Physics, PlayerAbilities, Pose, Position,
-    metadata::Sprinting,
+    SupportingBlockCtx, metadata::Sprinting,
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{ChunkStorage, World};
@@ -178,6 +178,19 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
 
         if new_pos != ***position {
             ***position = new_pos;
+
+            // Entity.setPos also refreshes bouding box, but since we don't have required
+            // dimensions in our current pass we will just use this
+            // `move_relative`` instead of `make_bounding box`, and technically
+            // dimensions/pose doesn't change in travel, so this should be fine
+            // enough. This is added because later supporting block needs to use the new
+            // boundingbox based on the new position and is exactly what vanilla is doing,
+            // And I do feel a bit uncomfortable knowning there is a dedicated
+            // `update_bounding_box` system just for updating the boundingbox, but it seems
+            // to much to break up this move_colliding and the whole call stack into small
+            // systems
+            let new_boundingbox = physics.bounding_box.move_relative(collide_result);
+            physics.bounding_box = new_boundingbox;
         }
     }
 
@@ -260,7 +273,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     // getFireImmuneTicks()); }
 }
 
-
 /// vanilla's Entity.checkSupportingBlock
 pub fn calculate_supporting_block(
     on_ground: bool,
@@ -269,9 +281,12 @@ pub fn calculate_supporting_block(
     physics: &Physics,
     world: &World,
     source_entity: Entity,
-) -> Option<BlockPos> {
+) -> SupportingBlockCtx {
     if !on_ground {
-        return None;
+        return SupportingBlockCtx {
+            main_supporting_blockpos: None,
+            on_ground_no_supporing_block: false,
+        };
     }
 
     let test_box = {
@@ -288,7 +303,7 @@ pub fn calculate_supporting_block(
         EntityCollisionContext::of(Some(source_entity)),
     );
 
-    if pos.is_some() || physics.main_supporting_pos().is_none() {
+    let pos = if pos.is_some() || physics.supporting_ctx().on_ground_no_supporing_block {
         pos
     } else if let Some(movement) = movement {
         let fallback_testbox = test_box.move_relative(Vec3 {
@@ -304,6 +319,11 @@ pub fn calculate_supporting_block(
         )
     } else {
         pos
+    };
+
+    SupportingBlockCtx {
+        main_supporting_blockpos: pos,
+        on_ground_no_supporing_block: pos.is_none(),
     }
 }
 
