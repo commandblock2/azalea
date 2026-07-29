@@ -285,7 +285,7 @@ pub fn calculate_supporting_block(
     if !on_ground {
         return SupportingBlockCtx {
             main_supporting_blockpos: None,
-            on_ground_no_supporing_block: false,
+            on_ground_no_supporting_block: false,
         };
     }
 
@@ -303,7 +303,7 @@ pub fn calculate_supporting_block(
         EntityCollisionContext::of(Some(source_entity)),
     );
 
-    let pos = if pos.is_some() || physics.supporting_ctx().on_ground_no_supporing_block {
+    let pos = if pos.is_some() || physics.supporting_ctx().on_ground_no_supporting_block {
         pos
     } else if let Some(movement) = movement {
         let fallback_testbox = test_box.move_relative(Vec3 {
@@ -323,7 +323,7 @@ pub fn calculate_supporting_block(
 
     SupportingBlockCtx {
         main_supporting_blockpos: pos,
-        on_ground_no_supporing_block: pos.is_none(),
+        on_ground_no_supporting_block: pos.is_none(),
     }
 }
 

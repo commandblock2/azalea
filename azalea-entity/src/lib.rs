@@ -257,12 +257,12 @@ impl Eq for LookDirection {}
 #[derive(Clone, Debug, Default)]
 pub struct SupportingBlockCtx {
     pub main_supporting_blockpos: Option<BlockPos>,
-    pub on_ground_no_supporing_block: bool,
+    pub on_ground_no_supporting_block: bool,
 }
 
 impl SupportingBlockCtx {
     pub fn new() -> SupportingBlockCtx {
-        Self { main_supporting_blockpos: None, on_ground_no_supporing_block: false }
+        Self { main_supporting_blockpos: None, on_ground_no_supporting_block: false }
     }
 }
 
