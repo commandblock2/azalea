@@ -11,6 +11,7 @@ use azalea_core::{
 use azalea_entity::{
     Dead, EntityBundle, EntityKindComponent, HasClientLoaded, LoadedBy, LocalEntity, LookDirection,
     Physics, PlayerAbilities, Position,
+    dimensions::EntityDimensions,
     effect_events::{AddEffectEvent, RemoveEffectsEvent},
     indexing::{EntityIdIndex, EntityUuidIndex},
     inventory::Inventory,
@@ -1491,6 +1492,7 @@ impl GamePacketHandler<'_> {
                 &mut Physics,
                 &mut Position,
                 &mut LookDirection,
+                &EntityDimensions,
                 Option<&LocalEntity>,
             )>,
             EntityUpdateQuery,
@@ -1517,7 +1519,7 @@ impl GamePacketHandler<'_> {
                     return;
                 }
 
-                let Ok((mut physics, mut position, mut look_direction, local_entity)) =
+                let Ok((mut physics, mut position, mut look_direction, dimensions, local_entity)) =
                     entity_query.get_mut(entity)
                 else {
                     return;
@@ -1529,6 +1531,16 @@ impl GamePacketHandler<'_> {
                 if is_client_authoritative {
                     debug!("Ignoring entity position sync packet for local player");
                     return;
+                }
+
+                if **position != new_position {
+                    **position = new_position;
+
+                    physics.bounding_box = dimensions.make_bounding_box(**position);
+                }
+
+                if *look_direction != new_look_direction {
+                    *look_direction = new_look_direction;
                 }
 
                 let block = calculate_supporting_block_at_current_pos(
@@ -1543,14 +1555,6 @@ impl GamePacketHandler<'_> {
                     entity,
                 );
                 physics.set_on_ground(new_on_ground, block);
-
-                if **position != new_position {
-                    **position = new_position;
-                }
-
-                if *look_direction != new_look_direction {
-                    *look_direction = new_look_direction;
-                }
             },
         );
     }
@@ -1712,6 +1716,8 @@ fn move_entity(
 
         if new_position != **position {
             **position = new_position;
+            
+            physics.bounding_box = physics.bounding_box.move_relative(new_delta.into())
         }
     }
 
@@ -1723,16 +1729,13 @@ fn move_entity(
     }
 
     let block = calculate_supporting_block_at_current_pos(
-            p.on_ground,
-            None,
-            **position,
-            &physics,
-            &world_holder.shared.read(),
-            entity,
-        );
-
-    physics.set_on_ground(
         p.on_ground,
-        block,
+        None,
+        **position,
+        &physics,
+        &world_holder.shared.read(),
+        entity,
     );
+
+    physics.set_on_ground(p.on_ground, block);
 }
