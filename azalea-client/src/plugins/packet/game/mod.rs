@@ -1715,9 +1715,8 @@ fn move_entity(
         physics.vec_delta_codec.set_base(new_position);
 
         if new_position != **position {
+            physics.bounding_box = physics.bounding_box.move_relative(new_position - **position);
             **position = new_position;
-            
-            physics.bounding_box = physics.bounding_box.move_relative(new_delta.into())
         }
     }
 

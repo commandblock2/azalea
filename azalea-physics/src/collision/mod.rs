@@ -206,7 +206,7 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
         on_ground,
         calculate_supporting_block_at_current_pos(
             on_ground,
-            Some(movement),
+            Some(collide_result),
             ***position,
             physics,
             world,
