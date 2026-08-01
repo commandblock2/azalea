@@ -568,7 +568,7 @@ pub fn update_falling_distance(
         let old_position = physics.old_position;
         check_fall_damage(
             &mut physics,
-            (old_position - **position).y,
+            (**position - old_position).y,
             block_state_below,
             block_pos_below,
         );
