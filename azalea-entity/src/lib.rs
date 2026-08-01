@@ -258,6 +258,7 @@ impl Eq for LookDirection {}
 pub struct SupportingBlockCtx {
     pub main_supporting_blockpos: Option<BlockPos>,
     pub on_ground_no_supporting_block: bool,
+    pub movement: Option<Vec3>
 }
 
 
@@ -291,7 +292,7 @@ pub struct Physics {
     on_ground: bool,
     last_on_ground: bool,
     // Client side support blockpos is update together with on_ground, so it's put here
-    supporting_ctx: SupportingBlockCtx,
+    pub supporting_ctx: SupportingBlockCtx,
 
     /// The number of ticks until we jump again, if the jump key is being held.
     ///
@@ -397,10 +398,6 @@ impl Physics {
 
     pub fn set_old_pos(&mut self, pos: Position) {
         self.old_position = *pos;
-    }
-
-    pub fn supporting_ctx(&self) -> &SupportingBlockCtx {
-        &self.supporting_ctx
     }
 }
 

@@ -5,6 +5,7 @@ pub mod client_movement;
 pub mod clip;
 pub mod collision;
 pub mod fluids;
+pub mod support;
 pub mod travel;
 
 use std::collections::HashSet;
@@ -18,7 +19,7 @@ use azalea_core::{
 use azalea_entity::{
     ActiveEffects, Attributes, EntityKindComponent, HasClientLoaded, Jumping, LocalEntity,
     LookDirection, OnClimbable, Physics, Pose, Position, dimensions::EntityDimensions,
-    metadata::Sprinting, move_relative, on_pos,
+    metadata::Sprinting, move_relative, on_pos, update_bounding_box,
 };
 use azalea_registry::builtin::{BlockKind, EntityKind, MobEffect};
 use azalea_world::{ChunkStorage, World, WorldName, Worlds};
@@ -30,6 +31,7 @@ use collision::{BLOCK_SHAPE, BlockWithShape, VoxelShape, move_colliding};
 use crate::{
     client_movement::ClientMovementState,
     collision::{MoveCtx, entity_collisions::update_last_bounding_box},
+    support::update_main_supporting_block_pos,
 };
 
 /// A Bevy [`SystemSet`] for running physics that makes entities do things.
@@ -47,6 +49,9 @@ impl Plugin for PhysicsPlugin {
                 fluids::update_swimming,
                 ai_step,
                 travel::travel,
+                update_bounding_box,
+                update_main_supporting_block_pos,
+                update_falling_distance,
                 apply_effects_from_blocks,
             )
                 .chain()
@@ -56,7 +61,8 @@ impl Plugin for PhysicsPlugin {
         // we want this to happen after packets are handled but before physics
         .add_systems(
             Update,
-            update_last_bounding_box.after(azalea_entity::update_bounding_box),
+            (update_main_supporting_block_pos, update_last_bounding_box).chain()
+                .after(azalea_entity::update_bounding_box),
         );
     }
 }
@@ -504,7 +510,11 @@ fn block_jump_factor(world: &World, position: Position, physics: &Physics) -> f3
     let block_at_pos = world.chunks.get_block_state(position.into());
     let block_below = world
         .chunks
-        .get_block_state(get_block_pos_below_that_affects_movement(&world.chunks, position, physics));
+        .get_block_state(get_block_pos_below_that_affects_movement(
+            &world.chunks,
+            position,
+            physics,
+        ));
 
     let block_at_pos_jump_factor = if let Some(block) = block_at_pos {
         block.behavior().jump_factor
@@ -537,4 +547,47 @@ fn jump_boost_power(active_effects: &ActiveEffects) -> f32 {
         .get_level(MobEffect::JumpBoost)
         .map(|level| 0.1 * (level + 1) as f32)
         .unwrap_or(0.)
+}
+
+pub fn update_falling_distance(
+    mut query: Query<
+        (&Position, &WorldName, &mut Physics),
+        (With<LocalEntity>, With<HasClientLoaded>),
+    >,
+    worlds: Res<Worlds>,
+) {
+    for (position, world_name, mut physics) in &mut query {
+        let Some(world_lock) = worlds.get(world_name) else {
+            continue;
+        };
+        let world = world_lock.read();
+
+        let block_pos_below = azalea_entity::on_pos_legacy(&world.chunks, *position, &physics);
+        let block_state_below = world.get_block_state(block_pos_below).unwrap_or_default();
+
+        let old_position = physics.old_position;
+        check_fall_damage(
+            &mut physics,
+            (old_position - **position).y,
+            block_state_below,
+            block_pos_below,
+        );
+    }
+}
+
+fn check_fall_damage(
+    physics: &mut Physics,
+    delta_y: f64,
+    _block_state_below: BlockState,
+    _block_pos_below: BlockPos,
+) {
+    if !physics.is_in_water() && delta_y < 0. {
+        physics.fall_distance -= delta_y as f32 as f64;
+    }
+
+    if physics.on_ground() {
+        // vanilla calls block.fallOn here but it's not relevant for us
+
+        physics.fall_distance = 0.;
+    }
 }

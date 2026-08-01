@@ -30,12 +30,10 @@ use tracing::warn;
 
 use self::world_collisions::get_block_collisions;
 use crate::{
-    client_movement::ClientMovementState,
-    collision::{
+    client_movement::ClientMovementState, collision::{
         entity_collisions::AabbQuery,
         world_collisions::{EntityCollisionContext, find_supporting_block},
-    },
-    travel::no_collision,
+    }, travel::no_collision
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -163,7 +161,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
 
     let position = &mut ctx.position;
     let physics = &mut *ctx.physics;
-    let world = ctx.world;
 
     if move_distance_sqr > EPSILON || movement.length_squared() - move_distance_sqr < EPSILON {
         // TODO: fall damage
@@ -190,18 +187,9 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     physics.vertical_collision = vertical_collision;
     let on_ground = vertical_collision && movement.y < 0.;
     physics.set_on_ground(on_ground);
+    physics.supporting_ctx.movement = Some(collide_result);
 
     // TODO: minecraft checks for a "minor" horizontal collision here
-
-    let block_pos_below = azalea_entity::on_pos_legacy(&world.chunks, **position, physics);
-    let block_state_below = world.get_block_state(block_pos_below).unwrap_or_default();
-
-    check_fall_damage(
-        physics,
-        collide_result.y,
-        block_state_below,
-        block_pos_below,
-    );
 
     // if self.isRemoved() { return; }
 
@@ -253,7 +241,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
 /// vanilla's Entity.checkSupportingBlock
 pub fn calculate_supporting_block_at_current_pos(
     on_ground: bool,
-    movement: Option<Vec3>,
     position: Vec3,
     physics: &Physics,
     world: &World,
@@ -263,6 +250,7 @@ pub fn calculate_supporting_block_at_current_pos(
         return SupportingBlockCtx {
             main_supporting_blockpos: None,
             on_ground_no_supporting_block: false,
+            movement: physics.supporting_ctx.movement
         };
     }
 
@@ -280,9 +268,9 @@ pub fn calculate_supporting_block_at_current_pos(
         EntityCollisionContext::of(Some(source_entity)),
     );
 
-    let pos = if pos.is_some() || physics.supporting_ctx().on_ground_no_supporting_block {
+    let pos = if pos.is_some() || physics.supporting_ctx.on_ground_no_supporting_block {
         pos
-    } else if let Some(movement) = movement {
+    } else if let Some(movement) = physics.supporting_ctx.movement {
         let fallback_testbox = test_box.move_relative(Vec3 {
             x: -movement.x,
             y: 0.0,
@@ -301,23 +289,7 @@ pub fn calculate_supporting_block_at_current_pos(
     SupportingBlockCtx {
         main_supporting_blockpos: pos,
         on_ground_no_supporting_block: pos.is_none(),
-    }
-}
-
-fn check_fall_damage(
-    physics: &mut Physics,
-    delta_y: f64,
-    _block_state_below: BlockState,
-    _block_pos_below: BlockPos,
-) {
-    if !physics.is_in_water() && delta_y < 0. {
-        physics.fall_distance -= delta_y as f32 as f64;
-    }
-
-    if physics.on_ground() {
-        // vanilla calls block.fallOn here but it's not relevant for us
-
-        physics.fall_distance = 0.;
+        movement: physics.supporting_ctx.movement
     }
 }
 

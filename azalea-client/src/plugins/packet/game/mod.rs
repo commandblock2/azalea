@@ -1539,6 +1539,7 @@ impl GamePacketHandler<'_> {
                 }
 
                 physics.set_on_ground(new_on_ground);
+                physics.supporting_ctx.movement = None;
             },
         );
     }
@@ -1711,4 +1712,5 @@ fn move_entity(
     }
 
     physics.set_on_ground(p.on_ground);
+    physics.supporting_ctx.movement = None;
 }
