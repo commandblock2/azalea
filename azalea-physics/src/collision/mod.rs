@@ -178,19 +178,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
 
         if new_pos != ***position {
             ***position = new_pos;
-
-            // Entity.setPos also refreshes bouding box, but since we don't have required
-            // dimensions in our current pass we will just use this
-            // `move_relative`` instead of `make_bounding box`, and technically
-            // dimensions/pose doesn't change in travel, so this should be fine
-            // enough. This is added because later supporting block needs to use the new
-            // boundingbox based on the new position and is exactly what vanilla is doing,
-            // And I do feel a bit uncomfortable knowning there is a dedicated
-            // `update_bounding_box` system just for updating the boundingbox, but it seems
-            // to much to break up this move_colliding and the whole call stack into small
-            // systems
-            let new_boundingbox = physics.bounding_box.move_relative(collide_result);
-            physics.bounding_box = new_boundingbox;
         }
     }
 
@@ -202,17 +189,7 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     let vertical_collision = movement.y != collide_result.y;
     physics.vertical_collision = vertical_collision;
     let on_ground = vertical_collision && movement.y < 0.;
-    physics.set_on_ground(
-        on_ground,
-        calculate_supporting_block_at_current_pos(
-            on_ground,
-            Some(collide_result),
-            ***position,
-            physics,
-            world,
-            ctx.source_entity,
-        ),
-    );
+    physics.set_on_ground(on_ground);
 
     // TODO: minecraft checks for a "minor" horizontal collision here
 

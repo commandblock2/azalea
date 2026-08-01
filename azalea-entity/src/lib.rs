@@ -364,10 +364,9 @@ impl Physics {
     /// Forcing the supporting_block to be updated together with on_gound just
     /// like vanilla should make it harder to accidentally updated on_ground but
     /// not supporting block
-    pub fn set_on_ground(&mut self, on_ground: bool, supporting_ctx: SupportingBlockCtx) {
+    pub fn set_on_ground(&mut self, on_ground: bool) {
         self.last_on_ground = self.on_ground;
         self.on_ground = on_ground;
-        self.supporting_ctx = supporting_ctx;
     }
 
     /// The last value of the on_ground value.

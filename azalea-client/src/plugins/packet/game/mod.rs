@@ -11,13 +11,11 @@ use azalea_core::{
 use azalea_entity::{
     Dead, EntityBundle, EntityKindComponent, HasClientLoaded, LoadedBy, LocalEntity, LookDirection,
     Physics, PlayerAbilities, Position,
-    dimensions::EntityDimensions,
     effect_events::{AddEffectEvent, RemoveEffectsEvent},
     indexing::{EntityIdIndex, EntityUuidIndex},
     inventory::Inventory,
     metadata::{Health, apply_metadata},
 };
-use azalea_physics::collision::calculate_supporting_block_at_current_pos;
 use azalea_protocol::{
     common::movements::MoveFlags,
     packets::{
@@ -1492,7 +1490,6 @@ impl GamePacketHandler<'_> {
                 &mut Physics,
                 &mut Position,
                 &mut LookDirection,
-                &EntityDimensions,
                 Option<&LocalEntity>,
             )>,
             EntityUpdateQuery,
@@ -1519,7 +1516,7 @@ impl GamePacketHandler<'_> {
                     return;
                 }
 
-                let Ok((mut physics, mut position, mut look_direction, dimensions, local_entity)) =
+                let Ok((mut physics, mut position, mut look_direction, local_entity)) =
                     entity_query.get_mut(entity)
                 else {
                     return;
@@ -1535,26 +1532,13 @@ impl GamePacketHandler<'_> {
 
                 if **position != new_position {
                     **position = new_position;
-
-                    physics.bounding_box = dimensions.make_bounding_box(**position);
                 }
 
                 if *look_direction != new_look_direction {
                     *look_direction = new_look_direction;
                 }
 
-                let block = calculate_supporting_block_at_current_pos(
-                    new_on_ground,
-                    None,
-                    **position,
-                    &*physics,
-                    &*world_holder.shared.read(), /* should it really be `shared` though? should
-                                                   * we change all the type in the chain to
-                                                   * partial world? typewise, this compiles, but
-                                                   * logically doesn't make sense */
-                    entity,
-                );
-                physics.set_on_ground(new_on_ground, block);
+                physics.set_on_ground(new_on_ground);
             },
         );
     }
@@ -1715,7 +1699,6 @@ fn move_entity(
         physics.vec_delta_codec.set_base(new_position);
 
         if new_position != **position {
-            physics.bounding_box = physics.bounding_box.move_relative(new_position - **position);
             **position = new_position;
         }
     }
@@ -1727,14 +1710,5 @@ fn move_entity(
         }
     }
 
-    let block = calculate_supporting_block_at_current_pos(
-        p.on_ground,
-        None,
-        **position,
-        &physics,
-        &world_holder.shared.read(),
-        entity,
-    );
-
-    physics.set_on_ground(p.on_ground, block);
+    physics.set_on_ground(p.on_ground);
 }
