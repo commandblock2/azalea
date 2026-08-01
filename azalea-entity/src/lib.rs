@@ -359,12 +359,7 @@ impl Physics {
     pub fn on_ground(&self) -> bool {
         self.on_ground
     }
-    /// Updates [`Self::on_ground`], [`Self::last_on_ground`] and
-    /// [`Self::main_supporting_blockpos`]. roughly
-    /// `Entity.setOnGround`/`Entity.setOnGroundWithMovement` in vanilla
-    /// Forcing the supporting_block to be updated together with on_gound just
-    /// like vanilla should make it harder to accidentally updated on_ground but
-    /// not supporting block
+    /// Updates [`Self::on_ground`], [`Self::last_on_ground`].
     pub fn set_on_ground(&mut self, on_ground: bool) {
         self.last_on_ground = self.on_ground;
         self.on_ground = on_ground;
