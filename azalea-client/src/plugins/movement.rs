@@ -69,11 +69,9 @@ impl Plugin for MovementPlugin {
                         .before(ai_step)
                         .before(azalea_physics::fluids::update_in_water_state_and_do_fluid_pushing),
                     send_player_input_packet,
-                    update_pose.before(EntityGeometryUpdateSystems),
+                    update_pose.after(travel).before(EntityGeometryUpdateSystems),
                     send_sprinting_if_needed
-                        .after(azalea_entity::update_in_loaded_chunk)
-                        .after(travel)
-                        .after(EntityGeometryUpdateSystems),
+                        .after(PhysicsSystems),
                     send_position,
                 )
                     .chain(),
