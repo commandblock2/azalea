@@ -1,6 +1,7 @@
 pub struct BlockBehavior {
     pub friction: f32,
     pub jump_factor: f32,
+    pub speed_factor: f32,
     pub destroy_time: f32,
     pub explosion_resistance: f32,
     pub requires_correct_tool_for_drops: bool,
@@ -13,6 +14,7 @@ impl Default for BlockBehavior {
         Self {
             friction: 0.6,
             jump_factor: 1.0,
+            speed_factor: 1.0,
             destroy_time: 0.,
             explosion_resistance: 0.,
             requires_correct_tool_for_drops: false,
@@ -32,6 +34,11 @@ impl BlockBehavior {
     }
 
     pub fn jump_factor(mut self, jump_factor: f32) -> Self {
+        self.jump_factor = jump_factor;
+        self
+    }
+
+    pub fn speed_factor(mut self, jump_factor: f32) -> Self {
         self.jump_factor = jump_factor;
         self
     }

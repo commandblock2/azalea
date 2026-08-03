@@ -144,6 +144,10 @@ def generate_blocks(
         if friction != 0.6:
             behavior_constructor += f".friction({friction})"
 
+        speed_factor = block_data_pumpkin.get("velocity_multiplier")
+        if speed_factor and speed_factor != 1:
+            behavior_constructor += f".speed_factor({speed_factor})"
+
         force_solid = None
         if block_data_pumpkin.get("force_solid_on"):
             force_solid = "true"
