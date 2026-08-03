@@ -17,7 +17,9 @@ use azalea_core::{
     tick::GameTick,
 };
 use azalea_entity::{
-    ActiveEffects, Attributes, EntityGeometryUpdateSystems, EntityKindComponent, HasClientLoaded, Jumping, LocalEntity, LookDirection, OnClimbable, Physics, Pose, Position, dimensions::EntityDimensions, metadata::Sprinting, move_relative, on_pos
+    ActiveEffects, Attributes, EntityGeometryUpdateSystems, EntityKindComponent, HasClientLoaded,
+    Jumping, LocalEntity, LookDirection, OnClimbable, Physics, Pose, Position,
+    dimensions::EntityDimensions, metadata::Sprinting, move_relative, on_pos,
 };
 use azalea_registry::builtin::{BlockKind, EntityKind, MobEffect};
 use azalea_world::{ChunkStorage, World, WorldName, Worlds};
@@ -58,7 +60,8 @@ impl Plugin for PhysicsPlugin {
         // we want this to happen after packets are handled but before physics
         .add_systems(
             Update,
-            (update_main_supporting_block_pos, update_last_bounding_box).chain()
+            (update_main_supporting_block_pos, update_last_bounding_box)
+                .chain()
                 .after(azalea_entity::update_bounding_box),
         );
     }

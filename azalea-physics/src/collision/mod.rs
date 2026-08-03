@@ -30,10 +30,12 @@ use tracing::warn;
 
 use self::world_collisions::get_block_collisions;
 use crate::{
-    client_movement::ClientMovementState, collision::{
+    client_movement::ClientMovementState,
+    collision::{
         entity_collisions::AabbQuery,
         world_collisions::{EntityCollisionContext, find_supporting_block},
-    }, travel::no_collision
+    },
+    travel::no_collision,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -250,7 +252,7 @@ pub fn calculate_supporting_block_at_current_pos(
         return SupportingBlockCtx {
             main_supporting_blockpos: None,
             on_ground_no_supporting_block: false,
-            movement: physics.supporting_ctx.movement
+            movement: physics.supporting_ctx.movement,
         };
     }
 
@@ -289,7 +291,7 @@ pub fn calculate_supporting_block_at_current_pos(
     SupportingBlockCtx {
         main_supporting_blockpos: pos,
         on_ground_no_supporting_block: pos.is_none(),
-        movement: physics.supporting_ctx.movement
+        movement: physics.supporting_ctx.movement,
     }
 }
 

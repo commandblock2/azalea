@@ -258,9 +258,8 @@ impl Eq for LookDirection {}
 pub struct SupportingBlockCtx {
     pub main_supporting_blockpos: Option<BlockPos>,
     pub on_ground_no_supporting_block: bool,
-    pub movement: Option<Vec3>
+    pub movement: Option<Vec3>,
 }
-
 
 /// The physics data relating to the entity, such as position, velocity, and
 /// bounding box.
