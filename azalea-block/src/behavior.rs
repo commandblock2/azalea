@@ -38,8 +38,8 @@ impl BlockBehavior {
         self
     }
 
-    pub fn speed_factor(mut self, jump_factor: f32) -> Self {
-        self.jump_factor = jump_factor;
+    pub fn speed_factor(mut self, speed_factor: f32) -> Self {
+        self.speed_factor = speed_factor;
         self
     }
 

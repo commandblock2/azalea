@@ -52,6 +52,7 @@ impl Plugin for PhysicsPlugin {
                 update_main_supporting_block_pos.after(EntityGeometryUpdateSystems),
                 update_falling_distance,
                 apply_effects_from_blocks,
+                apply_speed_factor
             )
                 .chain()
                 .in_set(PhysicsSystems)
@@ -224,6 +225,49 @@ pub fn apply_effects_from_blocks(
         }];
 
         check_inside_blocks(&mut physics, dimensions, &world, &movement_this_tick);
+    }
+}
+
+pub fn apply_speed_factor(
+    mut query: Query<
+        (&mut Physics, &Position, &WorldName),
+        (With<LocalEntity>, With<HasClientLoaded>),
+    >,
+    worlds: Res<Worlds>,
+) {
+    for (mut physics, position, world_name) in &mut query {
+        let Some(world_lock) = worlds.get(world_name) else {
+            continue;
+        };
+        let world = world_lock.read();
+
+        if let Some(block_state) = world.chunks.get_block_state(BlockPos::from(position)) {
+            let speed_factor = block_state.behavior().speed_factor;
+
+            let speed_factor = if block_state.as_block_kind() == BlockKind::BubbleColumn
+                || block_state.as_block_kind() == BlockKind::Water
+            {
+                speed_factor
+            } else if speed_factor == 1.0f32 {
+                world
+                    .chunks
+                    .get_block_state(get_block_pos_below_that_affects_movement(
+                        &world.chunks,
+                        *position,
+                        &physics,
+                    ))
+                    .unwrap_or(BlockState::from(BlockKind::VoidAir))
+                    .behavior()
+                    .speed_factor
+            } else {
+                speed_factor
+            };
+
+            physics.velocity =
+                physics
+                    .velocity
+                    .multiply(speed_factor as f64, 1.0, speed_factor as f64)
+        }
     }
 }
 
