@@ -367,7 +367,7 @@ fn run_one_simulation(
         let position = sim.position();
         let physics = sim.physics();
 
-        if physics.horizontal_collision
+        if physics.horizontal_collision()
             || physics.is_in_lava()
             || (physics.velocity.y < -0.7 && !physics.is_in_water())
         {
@@ -459,7 +459,7 @@ fn run_one_simulation(
 
                 let (position, physics, mining, inventory) = query.get(sim.entity).unwrap();
 
-                if physics.horizontal_collision {
+                if physics.horizontal_collision() {
                     // if the simulated move made us hit a wall then it's bad
                     break;
                 }

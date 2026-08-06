@@ -142,7 +142,7 @@ pub fn send_position(
             // }
             let flags = MoveFlags {
                 on_ground: physics.on_ground(),
-                horizontal_collision: physics.horizontal_collision,
+                horizontal_collision: physics.horizontal_collision(),
             };
             let packet = if sending_position && sending_direction {
                 Some(
@@ -412,7 +412,7 @@ pub fn local_player_ai_step(
                 || (is_passenger && !vehicle_can_sprint)
                 || !has_enough_impulse
                 || !has_enough_food_to_sprint
-                || (physics.horizontal_collision && !physics.minor_horizontal_collision)
+                || (physics.horizontal_collision() && !physics.minor_horizontal_collision)
                 || (is_in_water && !is_underwater);
             if should_stop_sprinting {
                 set_sprinting(false, &mut sprinting, &mut attributes);

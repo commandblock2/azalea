@@ -180,10 +180,8 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
         }
     }
 
-    let x_collision = !math::equal(movement.x, collide_result.x);
-    let z_collision = !math::equal(movement.z, collide_result.z);
-    let horizontal_collision = x_collision || z_collision;
-    physics.horizontal_collision = horizontal_collision;
+    physics.x_collision = !math::equal(movement.x, collide_result.x);
+    physics.z_collision = !math::equal(movement.z, collide_result.z);
 
     let vertical_collision = movement.y != collide_result.y;
     physics.vertical_collision = vertical_collision;
@@ -195,12 +193,12 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
 
     // if self.isRemoved() { return; }
 
-    if horizontal_collision {
+    if physics.horizontal_collision() {
         let delta_movement = &physics.velocity;
         physics.velocity = Vec3 {
-            x: if x_collision { 0. } else { delta_movement.x },
+            x: if physics.x_collision { 0. } else { delta_movement.x },
             y: delta_movement.y,
-            z: if z_collision { 0. } else { delta_movement.z },
+            z: if physics.z_collision { 0. } else { delta_movement.z },
         }
     }
 

@@ -183,7 +183,7 @@ fn travel_in_fluid(ctx: &mut MoveCtx) {
         move_colliding(ctx, ctx.physics.velocity);
 
         let mut new_velocity = ctx.physics.velocity;
-        if ctx.physics.horizontal_collision && *ctx.on_climbable {
+        if ctx.physics.horizontal_collision() && *ctx.on_climbable {
             // underwater ladders
             new_velocity.y = 0.2;
         }
@@ -217,7 +217,7 @@ fn travel_in_fluid(ctx: &mut MoveCtx) {
     }
 
     let velocity = ctx.physics.velocity;
-    if ctx.physics.horizontal_collision
+    if ctx.physics.horizontal_collision()
         && is_free(
             ctx.world,
             ctx.source_entity,

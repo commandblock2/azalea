@@ -306,7 +306,8 @@ pub struct Physics {
 
     pub has_impulse: bool,
 
-    pub horizontal_collision: bool,
+    pub x_collision: bool,
+    pub z_collision: bool,
     // TODO: implement minor_horizontal_collision
     pub minor_horizontal_collision: bool,
     pub vertical_collision: bool,
@@ -342,7 +343,8 @@ impl Physics {
 
             has_impulse: false,
 
-            horizontal_collision: false,
+            x_collision: false,
+            z_collision: false,
             minor_horizontal_collision: false,
             vertical_collision: false,
 
@@ -385,6 +387,7 @@ impl Physics {
     pub fn is_in_water(&self) -> bool {
         self.was_touching_water
     }
+
     pub fn is_in_lava(&self) -> bool {
         // TODO: also check `!this.firstTick &&`
         self.lava_fluid_height > 0.
@@ -392,6 +395,10 @@ impl Physics {
 
     pub fn set_old_pos(&mut self, pos: Position) {
         self.old_position = *pos;
+    }
+
+    pub fn horizontal_collision(&self) -> bool {
+        self.x_collision || self.z_collision
     }
 }
 
