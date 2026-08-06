@@ -4,10 +4,7 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, HasClientLoaded, Jumping, LocalEntity, LookDirection, OnClimbable, Physics,
-    PlayerAbilities, Pose, Position,
-    metadata::{FallFlying, Sprinting},
-    move_relative, view_vector,
+    Attributes, HasClientLoaded, Jumping, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, metadata::{FallFlying, Sprinting}, move_relative, view_vector
 };
 use azalea_world::{World, WorldName, Worlds};
 use bevy_ecs::prelude::*;
@@ -15,10 +12,7 @@ use bevy_ecs::prelude::*;
 use crate::{
     client_movement::ClientMovementState,
     collision::{
-        MoveCtx, MoverType, Shapes,
-        entity_collisions::{AabbQuery, CollidableEntityQuery, get_entity_collisions},
-        move_colliding,
-        world_collisions::{get_block_and_liquid_collisions, get_block_collisions},
+        MoveCtx, MoverType, Shapes, entity_collisions::{AabbQuery, CollidableEntityQuery, get_entity_collisions}, move_colliding, world_collisions::{get_block_and_liquid_collisions, get_block_collisions}
     },
     get_block_pos_below_that_affects_movement, handle_relative_friction_and_calculate_movement,
 };
@@ -41,6 +35,7 @@ pub fn travel(
             &mut Physics,
             &mut LookDirection,
             &mut Position,
+            &mut MovementResult,
             Option<&mut FallFlying>,
         ),
         (With<LocalEntity>, With<HasClientLoaded>),
@@ -62,6 +57,7 @@ pub fn travel(
         mut physics,
         direction,
         position,
+        mut movement_result,
         fall_flying,
     ) in &mut query
     {
@@ -88,6 +84,7 @@ pub fn travel(
             on_climbable: *on_climbable,
             pose: pose.copied(),
             jumping: *jumping,
+            movement_result: &mut movement_result
         };
 
         if ctx.physics.is_in_water() || ctx.physics.is_in_lava() {
@@ -183,7 +180,7 @@ fn travel_in_fluid(ctx: &mut MoveCtx) {
         move_colliding(ctx, ctx.physics.velocity);
 
         let mut new_velocity = ctx.physics.velocity;
-        if ctx.physics.horizontal_collision && *ctx.on_climbable {
+        if ctx.movement_result.horizontal_collision() && *ctx.on_climbable {
             // underwater ladders
             new_velocity.y = 0.2;
         }
@@ -217,7 +214,7 @@ fn travel_in_fluid(ctx: &mut MoveCtx) {
     }
 
     let velocity = ctx.physics.velocity;
-    if ctx.physics.horizontal_collision
+    if ctx.movement_result.horizontal_collision()
         && is_free(
             ctx.world,
             ctx.source_entity,

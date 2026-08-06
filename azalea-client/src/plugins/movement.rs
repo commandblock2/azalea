@@ -5,18 +5,15 @@ use azalea_core::{
     tick::GameTick,
 };
 use azalea_entity::{
-    Attributes, Crouching, EntityGeometryUpdateSystems, HasClientLoaded, Jumping, LastSentPosition,
-    LocalEntity, LookDirection, OnClimbable, Physics, PlayerAbilities, Pose, Position,
-    dimensions::calculate_dimensions,
-    inventory::Inventory,
-    metadata::{self, FallFlying, Sprinting},
-    update_bounding_box,
+    Attributes, Crouching, EntityGeometryUpdateSystems, HasClientLoaded, Jumping, LastSentPosition, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, dimensions::calculate_dimensions, inventory::Inventory, metadata::{self, FallFlying, Sprinting}, update_bounding_box
 };
 use azalea_inventory::components::{self, EquipmentSlot};
 use azalea_physics::{
     PhysicsSystems, ai_step,
     client_movement::{ClientMovementState, SprintDirection, WalkDirection},
-    collision::entity_collisions::{AabbQuery, CollidableEntityQuery, update_last_bounding_box},
+    collision::{
+        entity_collisions::{AabbQuery, CollidableEntityQuery, update_last_bounding_box},
+    },
     travel::{no_collision, travel},
 };
 use azalea_protocol::{
@@ -99,6 +96,7 @@ pub fn send_position(
             Entity,
             &Position,
             &LookDirection,
+            &MovementResult,
             &mut ClientMovementState,
             &mut LastSentPosition,
             &mut Physics,
@@ -112,6 +110,7 @@ pub fn send_position(
         entity,
         position,
         direction,
+        movement_result,
         mut physics_state,
         mut last_sent_position,
         mut physics,
@@ -142,7 +141,7 @@ pub fn send_position(
             // }
             let flags = MoveFlags {
                 on_ground: physics.on_ground(),
-                horizontal_collision: physics.horizontal_collision,
+                horizontal_collision: movement_result.horizontal_collision(),
             };
             let packet = if sending_position && sending_direction {
                 Some(
@@ -299,21 +298,26 @@ pub(crate) fn tick_controls(mut query: Query<&mut ClientMovementState>) {
 pub fn local_player_ai_step(
     mut query: Query<
         (
-            Entity,
-            &ClientMovementState,
-            &PlayerAbilities,
-            &metadata::Swimming,
-            &metadata::SleepingPos,
-            &WorldHolder,
-            &Position,
-            Option<&Hunger>,
-            Option<&LastSentInput>,
-            &FallFlying,
-            &Pose,
-            &mut Physics,
-            &mut Sprinting,
-            &mut Crouching,
-            &mut Attributes,
+            (
+                Entity,
+                &ClientMovementState,
+                &PlayerAbilities,
+                &metadata::Swimming,
+                &metadata::SleepingPos,
+                &WorldHolder,
+                &Position,
+                Option<&Hunger>,
+                Option<&LastSentInput>,
+                &FallFlying,
+                &Pose,
+                &MovementResult,
+            ),
+            (
+                &mut Physics,
+                &mut Sprinting,
+                &mut Crouching,
+                &mut Attributes,
+            ),
         ),
         (With<HasClientLoaded>, With<LocalEntity>),
     >,
@@ -321,21 +325,21 @@ pub fn local_player_ai_step(
     collidable_entity_query: CollidableEntityQuery,
 ) {
     for (
-        entity,
-        physics_state,
-        abilities,
-        swimming,
-        sleeping_pos,
-        world_holder,
-        position,
-        hunger,
-        last_sent_input,
-        fall_flying,
-        pose,
-        mut physics,
-        mut sprinting,
-        mut crouching,
-        mut attributes,
+        (
+            entity,
+            physics_state,
+            abilities,
+            swimming,
+            sleeping_pos,
+            world_holder,
+            position,
+            hunger,
+            last_sent_input,
+            fall_flying,
+            pose,
+            movement_result,
+        ),
+        (mut physics, mut sprinting, mut crouching, mut attributes),
     ) in query.iter_mut()
     {
         // server ai step
@@ -412,7 +416,7 @@ pub fn local_player_ai_step(
                 || (is_passenger && !vehicle_can_sprint)
                 || !has_enough_impulse
                 || !has_enough_food_to_sprint
-                || (physics.horizontal_collision && !physics.minor_horizontal_collision)
+                || (movement_result.horizontal_collision() && !movement_result.minor_horizontal_collision())
                 || (is_in_water && !is_underwater);
             if should_stop_sprinting {
                 set_sprinting(false, &mut sprinting, &mut attributes);

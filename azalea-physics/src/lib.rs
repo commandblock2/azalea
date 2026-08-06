@@ -478,7 +478,7 @@ fn handle_relative_friction_and_calculate_movement(ctx: &mut MoveCtx, block_fric
     // PowderSnowBlock.canEntityWalkOnPowderSnow(entity))) {      var3 = new
     // Vec3(var3.x, 0.2D, var3.z);   }
 
-    if ctx.physics.horizontal_collision || *ctx.jumping {
+    if ctx.movement_result.horizontal_collision() || *ctx.jumping {
         let block_at_feet: BlockKind = ctx
             .world
             .chunks

@@ -306,11 +306,6 @@ pub struct Physics {
 
     pub has_impulse: bool,
 
-    pub horizontal_collision: bool,
-    // TODO: implement minor_horizontal_collision
-    pub minor_horizontal_collision: bool,
-    pub vertical_collision: bool,
-
     pub water_fluid_height: f64,
     pub lava_fluid_height: f64,
     pub was_touching_water: bool,
@@ -341,10 +336,6 @@ impl Physics {
             bounding_box: dimensions.make_bounding_box(pos),
 
             has_impulse: false,
-
-            horizontal_collision: false,
-            minor_horizontal_collision: false,
-            vertical_collision: false,
 
             water_fluid_height: 0.,
             lava_fluid_height: 0.,
@@ -392,6 +383,43 @@ impl Physics {
 
     pub fn set_old_pos(&mut self, pos: Position) {
         self.old_position = *pos;
+    }
+}
+
+#[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
+#[derive(Default, Clone)]
+pub struct MovementResult {
+    pub requested: Vec3,
+    pub actual: Vec3,
+}
+
+impl MovementResult {
+    pub fn x_collision(&self) -> bool {
+        !math::equal(self.requested.x, self.actual.x)
+    }
+
+    pub fn z_collision(&self) -> bool {
+        !math::equal(self.requested.z, self.actual.z)
+    }
+
+    pub fn vertical_collision(&self) -> bool {
+        self.requested.y != self.actual.y
+    }
+
+    pub fn horizontal_collision(&self) -> bool {
+        self.x_collision() || self.z_collision()
+    }
+
+    pub fn minor_horizontal_collision(&self) -> bool {
+        false
+    }
+
+    pub fn moved_vertically(&self) -> bool {
+        self.requested.y.abs() > 0.0
+    }
+
+    pub fn vertical_collision_below(&self) -> bool {
+        self.vertical_collision() && self.requested.y < 0.0
     }
 }
 

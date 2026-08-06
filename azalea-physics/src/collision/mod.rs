@@ -12,12 +12,11 @@ use azalea_block::{BlockState, fluid_state::FluidState};
 use azalea_core::{
     aabb::Aabb,
     direction::Axis,
-    math::{self, EPSILON},
+    math::EPSILON,
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, Jumping, LookDirection, OnClimbable, Physics, PlayerAbilities, Pose, Position,
-    SupportingBlockCtx, metadata::Sprinting,
+    Attributes, Jumping, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, SupportingBlockCtx, metadata::Sprinting
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{ChunkStorage, World};
@@ -131,6 +130,8 @@ pub struct MoveCtx<'world, 'state, 'a, 'b> {
     pub on_climbable: OnClimbable,
     pub pose: Option<Pose>,
     pub jumping: Jumping,
+
+    pub movement_result: &'a mut MovementResult,
 }
 
 /// Move an entity by a given delta, checking for collisions.
@@ -180,31 +181,38 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
         }
     }
 
-    let x_collision = !math::equal(movement.x, collide_result.x);
-    let z_collision = !math::equal(movement.z, collide_result.z);
-    let horizontal_collision = x_collision || z_collision;
-    physics.horizontal_collision = horizontal_collision;
+    ctx.movement_result.requested = movement;
+    ctx.movement_result.actual = collide_result;
 
-    let vertical_collision = movement.y != collide_result.y;
-    physics.vertical_collision = vertical_collision;
-    let on_ground = vertical_collision && movement.y < 0.;
+    let on_ground = ctx.movement_result.vertical_collision_below();
     physics.set_on_ground(on_ground);
     physics.supporting_ctx.movement = Some(collide_result);
+
+    ctx.movement_result.horizontal_collision();
+    ctx.movement_result.vertical_collision();
 
     // TODO: minecraft checks for a "minor" horizontal collision here
 
     // if self.isRemoved() { return; }
 
-    if horizontal_collision {
+    if ctx.movement_result.horizontal_collision() {
         let delta_movement = &physics.velocity;
         physics.velocity = Vec3 {
-            x: if x_collision { 0. } else { delta_movement.x },
+            x: if ctx.movement_result.x_collision() {
+                0.
+            } else {
+                delta_movement.x
+            },
             y: delta_movement.y,
-            z: if z_collision { 0. } else { delta_movement.z },
+            z: if ctx.movement_result.z_collision() {
+                0.
+            } else {
+                delta_movement.z
+            },
         }
     }
 
-    if vertical_collision {
+    if ctx.movement_result.vertical_collision() {
         // blockBelow.updateEntityAfterFallOn(this.level, this);
         // the default implementation of updateEntityAfterFallOn sets the y movement to
         // 0

@@ -10,8 +10,7 @@ use azalea_core::{
     entity_id::MinecraftEntityId, game_type::GameMode, position::Vec3, tick::GameTick,
 };
 use azalea_entity::{
-    Attributes, LookDirection, Physics, Position, dimensions::EntityDimensions,
-    inventory::Inventory,
+    Attributes, LookDirection, MovementResult, Physics, Position, dimensions::EntityDimensions, inventory::Inventory
 };
 use azalea_registry::builtin::EntityKind;
 use azalea_world::{ChunkStorage, PartialWorld, World, WorldName, Worlds};
@@ -175,6 +174,9 @@ impl Simulation {
     }
     pub fn physics(&self) -> Physics {
         self.component::<Physics>().clone()
+    }
+    pub fn movement_result(&self) -> MovementResult {
+        self.component::<MovementResult>().clone()
     }
     pub fn is_mining(&self) -> bool {
         // return true if the component is present and Some

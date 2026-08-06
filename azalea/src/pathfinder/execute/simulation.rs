@@ -11,8 +11,8 @@ use azalea_client::{
     mining::{Mining, MiningSystems, StartMiningBlockEvent},
 };
 use azalea_core::{position::BlockPos, tick::GameTick};
-use azalea_entity::{Attributes, LookDirection, Physics, Position, inventory::Inventory};
-use azalea_physics::PhysicsSystems;
+use azalea_entity::{Attributes, LookDirection, MovementResult, Physics, Position, inventory::Inventory};
+use azalea_physics::{PhysicsSystems};
 use bevy_app::{App, Plugin};
 use bevy_ecs::{prelude::*, system::SystemState};
 use tracing::{debug, trace};
@@ -366,8 +366,9 @@ fn run_one_simulation(
     for ticks in 1..=timeout_ticks {
         let position = sim.position();
         let physics = sim.physics();
+        let movement = sim.movement_result();
 
-        if physics.horizontal_collision
+        if movement.horizontal_collision()
             || physics.is_in_lava()
             || (physics.velocity.y < -0.7 && !physics.is_in_water())
         {
@@ -440,7 +441,7 @@ fn run_one_simulation(
             {
                 let mut system_state = SystemState::<(
                     Commands,
-                    Query<(&Position, &Physics, Option<&Mining>, &Inventory)>,
+                    Query<(&Position, &Physics, Option<&Mining>, &Inventory, &MovementResult)>,
                     MessageWriter<LookAtEvent>,
                     MessageWriter<StartSprintEvent>,
                     MessageWriter<StartWalkEvent>,
@@ -457,9 +458,9 @@ fn run_one_simulation(
                     mut start_mining_events,
                 ) = system_state.get_mut(sim.app.world_mut()).unwrap();
 
-                let (position, physics, mining, inventory) = query.get(sim.entity).unwrap();
+                let (position, physics, mining, inventory, movement_result) = query.get(sim.entity).unwrap();
 
-                if physics.horizontal_collision {
+                if movement_result.horizontal_collision() {
                     // if the simulated move made us hit a wall then it's bad
                     break;
                 }
