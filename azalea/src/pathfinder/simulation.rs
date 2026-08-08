@@ -10,7 +10,7 @@ use azalea_core::{
     entity_id::MinecraftEntityId, game_type::GameMode, position::Vec3, tick::GameTick,
 };
 use azalea_entity::{
-    Attributes, LookDirection, MovementResult, Physics, Position, dimensions::EntityDimensions, inventory::Inventory
+    Attributes, GroundContact, LookDirection, MovementResult, Physics, Position, dimensions::EntityDimensions, inventory::Inventory
 };
 use azalea_registry::builtin::EntityKind;
 use azalea_world::{ChunkStorage, PartialWorld, World, WorldName, Worlds};
@@ -174,6 +174,9 @@ impl Simulation {
     }
     pub fn physics(&self) -> Physics {
         self.component::<Physics>().clone()
+    }
+    pub fn ground_contact(&self) -> GroundContact {
+        self.component::<GroundContact>().clone()
     }
     pub fn movement_result(&self) -> MovementResult {
         self.component::<MovementResult>().clone()

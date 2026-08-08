@@ -9,12 +9,7 @@ use azalea_core::{
     position::{ChunkPos, Vec3},
 };
 use azalea_entity::{
-    Dead, EntityBundle, EntityKindComponent, HasClientLoaded, LoadedBy, LocalEntity, LookDirection,
-    Physics, PlayerAbilities, Position,
-    effect_events::{AddEffectEvent, RemoveEffectsEvent},
-    indexing::{EntityIdIndex, EntityUuidIndex},
-    inventory::Inventory,
-    metadata::{Health, apply_metadata},
+    Dead, EntityBundle, EntityKindComponent, GroundContact, HasClientLoaded, LoadedBy, LocalEntity, LookDirection, Physics, PlayerAbilities, Position, effect_events::{AddEffectEvent, RemoveEffectsEvent}, indexing::{EntityIdIndex, EntityUuidIndex}, inventory::Inventory, metadata::{Health, apply_metadata}
 };
 use azalea_protocol::{
     common::movements::MoveFlags,
@@ -1488,6 +1483,7 @@ impl GamePacketHandler<'_> {
             Query<(&EntityIdIndex, &WorldHolder)>,
             Query<(
                 &mut Physics,
+                &mut GroundContact,
                 &mut Position,
                 &mut LookDirection,
                 Option<&LocalEntity>,
@@ -1516,7 +1512,7 @@ impl GamePacketHandler<'_> {
                     return;
                 }
 
-                let Ok((mut physics, mut position, mut look_direction, local_entity)) =
+                let Ok((mut physics, mut ground_contact, mut position, mut look_direction, local_entity)) =
                     entity_query.get_mut(entity)
                 else {
                     return;
@@ -1538,8 +1534,7 @@ impl GamePacketHandler<'_> {
                     *look_direction = new_look_direction;
                 }
 
-                physics.set_on_ground(new_on_ground);
-                physics.supporting_ctx.movement = None;
+                ground_contact.set_on_ground(new_on_ground);
             },
         );
     }
@@ -1660,7 +1655,7 @@ struct MoveEntity {
 }
 
 type MoveEntityQuery<'world, 'state, 'a> =
-    Query<'world, 'state, (&'a mut Physics, &'a mut Position, &'a mut LookDirection)>;
+    Query<'world, 'state, (&'a mut Physics, &'a mut GroundContact, &'a mut Position, &'a mut LookDirection)>;
 
 fn move_entity(
     player_entity: Entity,
@@ -1681,7 +1676,7 @@ fn move_entity(
         return;
     };
 
-    let Ok((mut physics, mut position, mut look_direction)) = entity_query.get_mut(entity) else {
+    let Ok((mut physics, mut ground_contact, mut position, mut look_direction)) = entity_query.get_mut(entity) else {
         debug!("Got move entity packet for entity with missing components {entity_id}");
         return;
     };
@@ -1711,6 +1706,5 @@ fn move_entity(
         }
     }
 
-    physics.set_on_ground(p.on_ground);
-    physics.supporting_ctx.movement = None;
+    ground_contact.set_on_ground(p.on_ground);
 }

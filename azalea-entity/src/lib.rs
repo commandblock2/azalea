@@ -254,11 +254,35 @@ impl Hash for LookDirection {
 }
 impl Eq for LookDirection {}
 
-#[derive(Clone, Debug, Default)]
-pub struct SupportingBlockCtx {
-    pub main_supporting_blockpos: Option<BlockPos>,
-    pub on_ground_no_supporting_block: bool,
-    pub movement: Option<Vec3>,
+#[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
+#[derive(Default, Clone)]
+pub struct GroundContact {
+    pub on_ground: bool,
+    pub last_on_ground: bool,
+    pub supporting_block: Option<BlockPos>,
+    pub on_ground_no_support: bool
+}
+
+impl GroundContact {
+    pub fn on_ground(&self) -> bool {
+        self.on_ground
+    }
+    /// Updates [`Self::on_ground`], [`Self::last_on_ground`].
+    pub fn set_on_ground(&mut self, on_ground: bool) {
+        self.last_on_ground = self.on_ground;
+        self.on_ground = on_ground;
+    }
+
+    /// The last value of the on_ground value.
+    ///
+    /// This is used by Azalea internally for physics, it might not work as you
+    /// expect since it can be influenced by packets sent by the server.
+    pub fn last_on_ground(&self) -> bool {
+        self.last_on_ground
+    }
+    pub fn set_last_on_ground(&mut self, last_on_ground: bool) {
+        self.last_on_ground = last_on_ground;
+    }
 }
 
 /// The physics data relating to the entity, such as position, velocity, and
@@ -287,11 +311,6 @@ pub struct Physics {
     pub x_acceleration: f32,
     pub y_acceleration: f32,
     pub z_acceleration: f32,
-
-    on_ground: bool,
-    last_on_ground: bool,
-    // Client side support blockpos is update together with on_ground, so it's put here
-    pub supporting_ctx: SupportingBlockCtx,
 
     /// The number of ticks until we jump again, if the jump key is being held.
     ///
@@ -327,10 +346,6 @@ impl Physics {
             y_acceleration: 0.,
             z_acceleration: 0.,
 
-            on_ground: false,
-            last_on_ground: false,
-            supporting_ctx: SupportingBlockCtx::default(),
-
             no_jump_delay: 0,
 
             bounding_box: dimensions.make_bounding_box(pos),
@@ -344,26 +359,6 @@ impl Physics {
             fall_distance: 0.,
             remaining_fire_ticks: 0,
         }
-    }
-
-    pub fn on_ground(&self) -> bool {
-        self.on_ground
-    }
-    /// Updates [`Self::on_ground`], [`Self::last_on_ground`].
-    pub fn set_on_ground(&mut self, on_ground: bool) {
-        self.last_on_ground = self.on_ground;
-        self.on_ground = on_ground;
-    }
-
-    /// The last value of the on_ground value.
-    ///
-    /// This is used by Azalea internally for physics, it might not work as you
-    /// expect since it can be influenced by packets sent by the server.
-    pub fn last_on_ground(&self) -> bool {
-        self.last_on_ground
-    }
-    pub fn set_last_on_ground(&mut self, last_on_ground: bool) {
-        self.last_on_ground = last_on_ground;
     }
 
     pub fn reset_fall_distance(&mut self) {

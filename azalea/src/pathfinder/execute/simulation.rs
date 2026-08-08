@@ -11,7 +11,7 @@ use azalea_client::{
     mining::{Mining, MiningSystems, StartMiningBlockEvent},
 };
 use azalea_core::{position::BlockPos, tick::GameTick};
-use azalea_entity::{Attributes, LookDirection, MovementResult, Physics, Position, inventory::Inventory};
+use azalea_entity::{Attributes, GroundContact, LookDirection, MovementResult, Physics, Position, inventory::Inventory};
 use azalea_physics::{PhysicsSystems};
 use bevy_app::{App, Plugin};
 use bevy_ecs::{prelude::*, system::SystemState};
@@ -107,6 +107,7 @@ pub fn tick_execute_path(
         &mut LookDirection,
         &Position,
         &Physics,
+        &GroundContact,
         &ClientMovementState,
         Option<&Mining>,
         &WorldHolder,
@@ -126,6 +127,7 @@ pub fn tick_execute_path(
         mut look_direction,
         position,
         physics,
+        ground_contact,
         physics_state,
         mining,
         world_holder,
@@ -185,6 +187,7 @@ pub fn tick_execute_path(
                         position: **position,
                         start: executing_path.last_reached_node,
                         physics,
+                        ground_contact,
                         is_currently_mining: mining.is_some(),
                         can_mine: true,
                         world: world_holder.shared.clone(),
@@ -366,6 +369,7 @@ fn run_one_simulation(
     for ticks in 1..=timeout_ticks {
         let position = sim.position();
         let physics = sim.physics();
+        let ground_contact = &sim.ground_contact();
         let movement = sim.movement_result();
 
         if movement.horizontal_collision()
@@ -381,6 +385,7 @@ fn run_one_simulation(
             start,
             position,
             physics: &physics,
+            ground_contact
         }) {
             success = true;
             total_ticks = ticks;
@@ -441,7 +446,7 @@ fn run_one_simulation(
             {
                 let mut system_state = SystemState::<(
                     Commands,
-                    Query<(&Position, &Physics, Option<&Mining>, &Inventory, &MovementResult)>,
+                    Query<(&Position, &Physics, &GroundContact, Option<&Mining>, &Inventory, &MovementResult)>,
                     MessageWriter<LookAtEvent>,
                     MessageWriter<StartSprintEvent>,
                     MessageWriter<StartWalkEvent>,
@@ -458,7 +463,7 @@ fn run_one_simulation(
                     mut start_mining_events,
                 ) = system_state.get_mut(sim.app.world_mut()).unwrap();
 
-                let (position, physics, mining, inventory, movement_result) = query.get(sim.entity).unwrap();
+                let (position, physics, ground_contact, mining, inventory, movement_result) = query.get(sim.entity).unwrap();
 
                 if movement_result.horizontal_collision() {
                     // if the simulated move made us hit a wall then it's bad
@@ -474,6 +479,7 @@ fn run_one_simulation(
                     start: simulating_to_block,
                     position: **position,
                     physics,
+                    ground_contact,
                     is_currently_mining: mining.is_some(),
                     // don't modify the world from the simulation
                     can_mine: false,
@@ -497,6 +503,7 @@ fn run_one_simulation(
                 start: simulating_to_block,
                 position: sim.position(),
                 physics: &sim.physics(),
+                ground_contact: &sim.ground_contact()
             }) {
                 followup_success = true;
                 break;

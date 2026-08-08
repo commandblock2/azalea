@@ -5,7 +5,7 @@ use azalea_core::{
     tick::GameTick,
 };
 use azalea_entity::{
-    Attributes, Crouching, EntityGeometryUpdateSystems, HasClientLoaded, Jumping, LastSentPosition, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, dimensions::calculate_dimensions, inventory::Inventory, metadata::{self, FallFlying, Sprinting}, update_bounding_box
+    Attributes, Crouching, EntityGeometryUpdateSystems, GroundContact, HasClientLoaded, Jumping, LastSentPosition, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, dimensions::calculate_dimensions, inventory::Inventory, metadata::{self, FallFlying, Sprinting}, update_bounding_box
 };
 use azalea_inventory::components::{self, EquipmentSlot};
 use azalea_physics::{
@@ -97,9 +97,9 @@ pub fn send_position(
             &Position,
             &LookDirection,
             &MovementResult,
+            &mut GroundContact,
             &mut ClientMovementState,
             &mut LastSentPosition,
-            &mut Physics,
             &mut LastSentLookDirection,
         ),
         With<HasClientLoaded>,
@@ -111,9 +111,9 @@ pub fn send_position(
         position,
         direction,
         movement_result,
+        mut ground_contact,
         mut physics_state,
         mut last_sent_position,
-        mut physics,
         mut last_direction,
     ) in query.iter_mut()
     {
@@ -140,7 +140,7 @@ pub fn send_position(
             //   TODO: posrot packet for being a passenger
             // }
             let flags = MoveFlags {
-                on_ground: physics.on_ground(),
+                on_ground: ground_contact.on_ground(),
                 horizontal_collision: movement_result.horizontal_collision(),
             };
             let packet = if sending_position && sending_direction {
@@ -168,7 +168,7 @@ pub fn send_position(
                     }
                     .into_variant(),
                 )
-            } else if physics.last_on_ground() != physics.on_ground() {
+            } else if ground_contact.last_on_ground() != ground_contact.on_ground() {
                 Some(ServerboundMovePlayerStatusOnly { flags }.into_variant())
             } else {
                 None
@@ -183,8 +183,8 @@ pub fn send_position(
                 last_direction.x_rot = direction.x_rot();
             }
 
-            let on_ground = physics.on_ground();
-            physics.set_last_on_ground(on_ground);
+            let on_ground = ground_contact.on_ground();
+            ground_contact.set_last_on_ground(on_ground);
             // minecraft checks for autojump here, but also autojump is bad so
 
             packet
@@ -452,6 +452,7 @@ pub fn process_fall_flying_activation(
             &Inventory,
             &Physics,
             &OnClimbable,
+            &GroundContact,
             &mut FallFlying,
         ),
         (With<HasClientLoaded>, With<LocalEntity>),
@@ -467,6 +468,7 @@ pub fn process_fall_flying_activation(
         inv,
         physics,
         onclimbable,
+        ground_contact,
         mut fall_flying,
     ) in query.iter_mut()
     {
@@ -477,7 +479,7 @@ pub fn process_fall_flying_activation(
             && !creative_flight_toggled
             && last_sent_input.is_some_and(|input| !input.0.jump)
             && !**onclimbable
-            && can_start_fall_flying(&fall_flying, abilities, inv, physics)
+            && can_start_fall_flying(&fall_flying, abilities, inv, physics, ground_contact)
         {
             // split `tryToStartFallFlying` into condition check
             **fall_flying = true; // Player.startFallFlying()
@@ -499,12 +501,13 @@ fn can_start_fall_flying(
     abilities: &PlayerAbilities,
     inv: &Inventory,
     physics: &Physics,
+    ground_contact: &GroundContact
 ) -> bool {
     (!**already_fall_flying)
         && (!abilities.flying)
 
         // LivingEntity.canGlide()
-        && !physics.on_ground()
+        && !ground_contact.on_ground()
         // TODO: && isPassenger()
         // TODO: slow falling status effect
         && EquipmentSlot::values().iter().any(|slot| {

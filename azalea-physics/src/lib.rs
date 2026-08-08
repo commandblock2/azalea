@@ -17,8 +17,8 @@ use azalea_core::{
     tick::GameTick,
 };
 use azalea_entity::{
-    ActiveEffects, Attributes, EntityGeometryUpdateSystems, EntityKindComponent, HasClientLoaded,
-    Jumping, LocalEntity, LookDirection, OnClimbable, Physics, Pose, Position,
+    ActiveEffects, Attributes, EntityGeometryUpdateSystems, EntityKindComponent, GroundContact,
+    HasClientLoaded, Jumping, LocalEntity, LookDirection, OnClimbable, Physics, Pose, Position,
     dimensions::EntityDimensions, metadata::Sprinting, move_relative, on_pos,
 };
 use azalea_registry::builtin::{BlockKind, EntityKind, MobEffect};
@@ -31,7 +31,7 @@ use collision::{BLOCK_SHAPE, BlockWithShape, VoxelShape, move_colliding};
 use crate::{
     client_movement::ClientMovementState,
     collision::{MoveCtx, entity_collisions::update_last_bounding_box},
-    support::update_main_supporting_block_pos,
+    support::{SupportingBlockUpdate, update_main_supporting_block_pos},
 };
 
 /// A Bevy [`SystemSet`] for running physics that makes entities do things.
@@ -49,10 +49,12 @@ impl Plugin for PhysicsPlugin {
                 fluids::update_swimming,
                 ai_step,
                 travel::travel.before(EntityGeometryUpdateSystems),
-                update_main_supporting_block_pos.after(EntityGeometryUpdateSystems),
+                update_main_supporting_block_pos
+                    .with_input(SupportingBlockUpdate::LocalMovement)
+                    .after(EntityGeometryUpdateSystems),
                 update_falling_distance,
                 apply_effects_from_blocks,
-                apply_speed_factor
+                apply_speed_factor,
             )
                 .chain()
                 .in_set(PhysicsSystems)
@@ -61,7 +63,11 @@ impl Plugin for PhysicsPlugin {
         // we want this to happen after packets are handled but before physics
         .add_systems(
             Update,
-            (update_main_supporting_block_pos, update_last_bounding_box)
+            (
+                update_main_supporting_block_pos
+                    .with_input(SupportingBlockUpdate::PositionUpdateFromServer),
+                update_last_bounding_box,
+            )
                 .chain()
                 .after(azalea_entity::update_bounding_box),
         );
@@ -77,6 +83,7 @@ pub fn ai_step(
         (
             &mut Physics,
             Option<&Jumping>,
+            &GroundContact,
             &Position,
             &LookDirection,
             &Sprinting,
@@ -92,6 +99,7 @@ pub fn ai_step(
     for (
         mut physics,
         jumping,
+        ground_contact,
         position,
         look_direction,
         sprinting,
@@ -151,15 +159,17 @@ pub fn ai_step(
             let in_water = physics.is_in_water() && fluid_height > 0.;
             let fluid_jump_threshold = travel::fluid_jump_threshold();
 
-            if !in_water || physics.on_ground() && fluid_height <= fluid_jump_threshold {
+            if !in_water || ground_contact.on_ground() && fluid_height <= fluid_jump_threshold {
                 if !physics.is_in_lava()
-                    || physics.on_ground() && fluid_height <= fluid_jump_threshold
+                    || ground_contact.on_ground() && fluid_height <= fluid_jump_threshold
                 {
-                    if (physics.on_ground() || in_water && fluid_height <= fluid_jump_threshold)
+                    if (ground_contact.on_ground()
+                        || in_water && fluid_height <= fluid_jump_threshold)
                         && physics.no_jump_delay == 0
                     {
                         jump_from_ground(
                             &mut physics,
+                            ground_contact,
                             *position,
                             *look_direction,
                             *sprinting,
@@ -230,12 +240,12 @@ pub fn apply_effects_from_blocks(
 
 pub fn apply_speed_factor(
     mut query: Query<
-        (&mut Physics, &Position, &WorldName),
+        (&mut Physics, &Position, &GroundContact, &WorldName),
         (With<LocalEntity>, With<HasClientLoaded>),
     >,
     worlds: Res<Worlds>,
 ) {
-    for (mut physics, position, world_name) in &mut query {
+    for (mut physics, position, ground_contact, world_name) in &mut query {
         let Some(world_lock) = worlds.get(world_name) else {
             continue;
         };
@@ -254,7 +264,7 @@ pub fn apply_speed_factor(
                     .get_block_state(get_block_pos_below_that_affects_movement(
                         &world.chunks,
                         *position,
-                        &physics,
+                        &ground_contact,
                     ))
                     .unwrap_or(BlockState::from(BlockKind::VoidAir))
                     .behavior()
@@ -399,6 +409,7 @@ pub struct EntityMovement {
 
 pub fn jump_from_ground(
     physics: &mut Physics,
+    ground_contact: &GroundContact,
     position: Position,
     look_direction: LookDirection,
     sprinting: Sprinting,
@@ -411,7 +422,7 @@ pub fn jump_from_ground(
         .expect("All entities should be in a valid world");
     let world = world_lock.read();
 
-    let base_jump = jump_power(&world, position, physics);
+    let base_jump = jump_power(&world, position, ground_contact);
     let jump_power = base_jump + jump_boost_power(active_effects);
     if jump_power <= 1.0E-5 {
         return;
@@ -445,16 +456,21 @@ pub fn update_old_position(mut query: Query<(&mut Physics, &Position)>) {
 pub fn get_block_pos_below_that_affects_movement(
     chunk_storage: &ChunkStorage,
     position: Position,
-    physics: &Physics,
+    ground_contact: &GroundContact,
 ) -> BlockPos {
-    on_pos(0.500001f32, chunk_storage, position, physics)
+    on_pos(0.500001f32, chunk_storage, position, ground_contact)
 }
 
 fn handle_relative_friction_and_calculate_movement(ctx: &mut MoveCtx, block_friction: f32) -> Vec3 {
     move_relative(
         ctx.physics,
         ctx.direction,
-        get_friction_influenced_speed(ctx.physics, ctx.attributes, block_friction, ctx.sprinting),
+        get_friction_influenced_speed(
+            ctx.ground_contact,
+            ctx.attributes,
+            block_friction,
+            ctx.sprinting,
+        ),
         Vec3::new(
             ctx.physics.x_acceleration as f64,
             ctx.physics.y_acceleration as f64,
@@ -533,13 +549,13 @@ fn handle_on_climbable(
 //     return this.onGround ? this.getSpeed() * (0.21600002F / (friction *
 // friction * friction)) : this.flyingSpeed; }
 fn get_friction_influenced_speed(
-    physics: &Physics,
+    ground_contact: &GroundContact,
     attributes: &Attributes,
     friction: f32,
     sprinting: Sprinting,
 ) -> f32 {
     // TODO: have speed & flying_speed fields in entity
-    if physics.on_ground() {
+    if ground_contact.on_ground() {
         let speed = attributes.movement_speed.calculate() as f32;
         speed * (0.21600002f32 / (friction * friction * friction))
     } else {
@@ -550,14 +566,14 @@ fn get_friction_influenced_speed(
 
 /// Returns the what the entity's jump should be multiplied by based on the
 /// block they're standing on.
-fn block_jump_factor(world: &World, position: Position, physics: &Physics) -> f32 {
+fn block_jump_factor(world: &World, position: Position, ground_contact: &GroundContact) -> f32 {
     let block_at_pos = world.chunks.get_block_state(position.into());
     let block_below = world
         .chunks
         .get_block_state(get_block_pos_below_that_affects_movement(
             &world.chunks,
             position,
-            physics,
+            ground_contact,
         ));
 
     let block_at_pos_jump_factor = if let Some(block) = block_at_pos {
@@ -582,8 +598,8 @@ fn block_jump_factor(world: &World, position: Position, physics: &Physics) -> f3
 // public double getJumpBoostPower() {
 //     return this.hasEffect(MobEffects.JUMP) ? (double)(0.1F *
 // (float)(this.getEffect(MobEffects.JUMP).getAmplifier() + 1)) : 0.0D; }
-fn jump_power(world: &World, position: Position, physics: &Physics) -> f32 {
-    0.42 * block_jump_factor(world, position, physics)
+fn jump_power(world: &World, position: Position, ground_contact: &GroundContact) -> f32 {
+    0.42 * block_jump_factor(world, position, ground_contact)
 }
 
 fn jump_boost_power(active_effects: &ActiveEffects) -> f32 {
@@ -595,23 +611,25 @@ fn jump_boost_power(active_effects: &ActiveEffects) -> f32 {
 
 pub fn update_falling_distance(
     mut query: Query<
-        (&Position, &WorldName, &mut Physics),
+        (&Position, &WorldName, &GroundContact, &mut Physics),
         (With<LocalEntity>, With<HasClientLoaded>),
     >,
     worlds: Res<Worlds>,
 ) {
-    for (position, world_name, mut physics) in &mut query {
+    for (position, world_name, ground_contact, mut physics) in &mut query {
         let Some(world_lock) = worlds.get(world_name) else {
             continue;
         };
         let world = world_lock.read();
 
-        let block_pos_below = azalea_entity::on_pos_legacy(&world.chunks, *position, &physics);
+        let block_pos_below =
+            azalea_entity::on_pos_legacy(&world.chunks, *position, &ground_contact);
         let block_state_below = world.get_block_state(block_pos_below).unwrap_or_default();
 
         let old_position = physics.old_position;
         check_fall_damage(
             &mut physics,
+            ground_contact,
             (**position - old_position).y,
             block_state_below,
             block_pos_below,
@@ -621,6 +639,7 @@ pub fn update_falling_distance(
 
 fn check_fall_damage(
     physics: &mut Physics,
+    ground_contact: &GroundContact,
     delta_y: f64,
     _block_state_below: BlockState,
     _block_pos_below: BlockPos,
@@ -629,7 +648,7 @@ fn check_fall_damage(
         physics.fall_distance -= delta_y as f32 as f64;
     }
 
-    if physics.on_ground() {
+    if ground_contact.on_ground() {
         // vanilla calls block.fallOn here but it's not relevant for us
 
         physics.fall_distance = 0.;

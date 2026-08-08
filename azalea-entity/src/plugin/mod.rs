@@ -27,10 +27,7 @@ use indexing::EntityUuidIndex;
 use tracing::debug;
 
 use crate::{
-    FluidOnEyes, LookDirection, Physics, Pose, Position,
-    dimensions::{EntityDimensions, calculate_dimensions},
-    metadata::{self, Health, Player},
-    plugin::effect_events::{handle_add_effect, handle_remove_effects},
+    FluidOnEyes, GroundContact, LookDirection, Physics, Pose, Position, dimensions::{EntityDimensions, calculate_dimensions}, metadata::{self, Health, Player}, plugin::effect_events::{handle_add_effect, handle_remove_effects}
 };
 
 /// A Bevy [`SystemSet`] for various types of entity updates.
@@ -298,8 +295,8 @@ pub fn update_in_loaded_chunk(
 }
 
 /// Get the position of the block below the entity, but a little lower.
-pub fn on_pos_legacy(chunk_storage: &ChunkStorage, pos: Position, physics: &Physics) -> BlockPos {
-    on_pos(0.2, chunk_storage, pos, physics)
+pub fn on_pos_legacy(chunk_storage: &ChunkStorage, pos: Position, ground_contact: &GroundContact) -> BlockPos {
+    on_pos(0.2, chunk_storage, pos, ground_contact)
 }
 
 // int x = Mth.floor(this.position.x);
@@ -318,9 +315,9 @@ pub fn on_pos(
     offset: f32,
     chunk_storage: &ChunkStorage,
     pos: Position,
-    physics: &Physics,
+    ground_contact: &GroundContact,
 ) -> BlockPos {
-    if let Some(main_supporting_block) = physics.supporting_ctx.main_supporting_blockpos {
+    if let Some(main_supporting_block) = ground_contact.supporting_block {
         if !(offset > 1e-5f32) {
             main_supporting_block
         } else {

@@ -16,7 +16,7 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, Jumping, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, SupportingBlockCtx, metadata::Sprinting
+    Attributes, GroundContact, Jumping, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, metadata::Sprinting
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{ChunkStorage, World};
@@ -30,10 +30,9 @@ use tracing::warn;
 use self::world_collisions::get_block_collisions;
 use crate::{
     client_movement::ClientMovementState,
-    collision::{
-        entity_collisions::AabbQuery,
-        world_collisions::{EntityCollisionContext, find_supporting_block},
-    },
+    collision::
+        entity_collisions::AabbQuery
+    ,
     travel::no_collision,
 };
 
@@ -67,7 +66,7 @@ fn collide(ctx: &MoveCtx, movement: Vec3) -> Vec3 {
     let y_collision = movement.y != collided_delta.y;
     let z_collision = movement.z != collided_delta.z;
 
-    let on_ground = ctx.physics.on_ground() || y_collision && movement.y < 0.;
+    let on_ground = ctx.ground_contact.on_ground() || y_collision && movement.y < 0.;
 
     let max_up_step = 0.6;
     if max_up_step > 0. && on_ground && (x_collision || z_collision) {
@@ -132,6 +131,7 @@ pub struct MoveCtx<'world, 'state, 'a, 'b> {
     pub jumping: Jumping,
 
     pub movement_result: &'a mut MovementResult,
+    pub ground_contact: &'a mut GroundContact
 }
 
 /// Move an entity by a given delta, checking for collisions.
@@ -185,8 +185,7 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     ctx.movement_result.actual = collide_result;
 
     let on_ground = ctx.movement_result.vertical_collision_below();
-    physics.set_on_ground(on_ground);
-    physics.supporting_ctx.movement = Some(collide_result);
+    ctx.ground_contact.set_on_ground(on_ground);
 
     ctx.movement_result.horizontal_collision();
     ctx.movement_result.vertical_collision();
@@ -248,60 +247,7 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     // getFireImmuneTicks()); }
 }
 
-/// vanilla's Entity.checkSupportingBlock
-pub fn calculate_supporting_block_at_current_pos(
-    on_ground: bool,
-    position: Vec3,
-    physics: &Physics,
-    world: &World,
-    source_entity: Entity,
-) -> SupportingBlockCtx {
-    if !on_ground {
-        return SupportingBlockCtx {
-            main_supporting_blockpos: None,
-            on_ground_no_supporting_block: false,
-            movement: physics.supporting_ctx.movement,
-        };
-    }
 
-    let test_box = {
-        let mut box_ = physics.bounding_box;
-        box_.max.y = box_.min.y;
-        box_.min.y = box_.min.y - 1e-6;
-        box_
-    }; // small volume under player foot
-
-    let pos = find_supporting_block(
-        world,
-        test_box,
-        position,
-        EntityCollisionContext::of(Some(source_entity)),
-    );
-
-    let pos = if pos.is_some() || physics.supporting_ctx.on_ground_no_supporting_block {
-        pos
-    } else if let Some(movement) = physics.supporting_ctx.movement {
-        let fallback_testbox = test_box.move_relative(Vec3 {
-            x: -movement.x,
-            y: 0.0,
-            z: -movement.z,
-        });
-        find_supporting_block(
-            world,
-            fallback_testbox,
-            position,
-            EntityCollisionContext::of(Some(source_entity)),
-        )
-    } else {
-        pos
-    };
-
-    SupportingBlockCtx {
-        main_supporting_blockpos: pos,
-        on_ground_no_supporting_block: pos.is_none(),
-        movement: physics.supporting_ctx.movement,
-    }
-}
 
 fn maybe_back_off_from_edge(move_ctx: &mut MoveCtx, mut movement: Vec3) -> Vec3 {
     let is_staying_on_ground_surface = move_ctx.physics_state.is_some_and(|s| s.trying_to_crouch);
@@ -309,6 +255,7 @@ fn maybe_back_off_from_edge(move_ctx: &mut MoveCtx, mut movement: Vec3) -> Vec3 
 
     let fall_ctx = CanFallAtLeastCtx {
         physics: move_ctx.physics,
+        ground_contact: move_ctx.ground_contact,
         world: move_ctx.world,
         source_entity: move_ctx.source_entity,
         aabb_query: move_ctx.aabb_query,
@@ -373,13 +320,14 @@ fn get_max_up_step(attributes: &Attributes) -> f32 {
 }
 
 fn is_above_ground(ctx: &CanFallAtLeastCtx, max_up_step: f32) -> bool {
-    ctx.physics.on_ground()
+    ctx.ground_contact.on_ground()
         && ctx.physics.fall_distance < max_up_step as f64
         && !can_fall_at_least(ctx, 0., 0., max_up_step as f64 - ctx.physics.fall_distance)
 }
 
 pub struct CanFallAtLeastCtx<'world, 'state, 'a, 'b> {
     physics: &'a Physics,
+    ground_contact: &'a GroundContact,
     world: &'a World,
     source_entity: Entity,
     aabb_query: &'a AabbQuery<'world, 'state, 'b>,

@@ -4,7 +4,7 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, HasClientLoaded, Jumping, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, metadata::{FallFlying, Sprinting}, move_relative, view_vector
+    Attributes, GroundContact, HasClientLoaded, Jumping, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, metadata::{FallFlying, Sprinting}, move_relative, view_vector
 };
 use azalea_world::{World, WorldName, Worlds};
 use bevy_ecs::prelude::*;
@@ -36,6 +36,7 @@ pub fn travel(
             &mut LookDirection,
             &mut Position,
             &mut MovementResult,
+            &mut GroundContact,
             Option<&mut FallFlying>,
         ),
         (With<LocalEntity>, With<HasClientLoaded>),
@@ -58,6 +59,7 @@ pub fn travel(
         direction,
         position,
         mut movement_result,
+        mut ground_contact,
         fall_flying,
     ) in &mut query
     {
@@ -84,7 +86,8 @@ pub fn travel(
             on_climbable: *on_climbable,
             pose: pose.copied(),
             jumping: *jumping,
-            movement_result: &mut movement_result
+            movement_result: &mut movement_result,
+            ground_contact: &mut ground_contact
         };
 
         if ctx.physics.is_in_water() || ctx.physics.is_in_lava() {
@@ -108,7 +111,7 @@ fn travel_in_air(ctx: &mut MoveCtx) {
     let gravity = get_effective_gravity();
 
     let block_pos_below =
-        get_block_pos_below_that_affects_movement(&ctx.world.chunks, *ctx.position, ctx.physics);
+        get_block_pos_below_that_affects_movement(&ctx.world.chunks, *ctx.position, ctx.ground_contact);
 
     let block_below = ctx
         .world
@@ -117,7 +120,7 @@ fn travel_in_air(ctx: &mut MoveCtx) {
         .unwrap_or(BlockState::AIR);
 
     let block_friction = block_below.behavior().friction;
-    let inertia = if ctx.physics.on_ground() {
+    let inertia = if ctx.ground_contact.on_ground() {
         block_friction * 0.91
     } else {
         0.91
@@ -162,7 +165,7 @@ fn travel_in_fluid(ctx: &mut MoveCtx) {
         let mut speed = 0.02;
         let mut water_efficiency_modifier =
             ctx.attributes.water_movement_efficiency.calculate() as f32;
-        if !ctx.physics.on_ground() {
+        if !ctx.ground_contact.on_ground() {
             water_efficiency_modifier *= 0.5;
         }
 
