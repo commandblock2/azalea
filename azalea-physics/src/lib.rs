@@ -32,11 +32,16 @@ use crate::{
     client_movement::ClientMovementState,
     collision::{MoveCtx, entity_collisions::update_last_bounding_box},
     support::{SupportingBlockUpdate, update_main_supporting_block_pos},
+    travel::travel_post_move,
 };
 
 /// A Bevy [`SystemSet`] for running physics that makes entities do things.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, SystemSet)]
 pub struct PhysicsSystems;
+
+/// A Bevy [`SystemSet`] for running the original travel function (now broken into multiple systems)
+#[derive(Clone, Debug, Eq, Hash, PartialEq, SystemSet)]
+pub struct TravelSystems;
 
 pub struct PhysicsPlugin;
 impl Plugin for PhysicsPlugin {
@@ -48,13 +53,18 @@ impl Plugin for PhysicsPlugin {
                 update_old_position,
                 fluids::update_swimming,
                 ai_step,
-                travel::travel.before(EntityGeometryUpdateSystems),
-                update_main_supporting_block_pos
-                    .with_input(SupportingBlockUpdate::LocalMovement)
-                    .after(EntityGeometryUpdateSystems),
-                update_falling_distance,
-                apply_effects_from_blocks,
-                apply_speed_factor,
+                (
+                    travel::travel_until_moved.before(EntityGeometryUpdateSystems),
+                    update_main_supporting_block_pos
+                        .with_input(SupportingBlockUpdate::LocalMovement)
+                        .after(EntityGeometryUpdateSystems),
+                    update_falling_distance,
+                    apply_effects_from_blocks,
+                    apply_speed_factor,
+                    travel_post_move,
+                )
+                    .chain()
+                    .in_set(TravelSystems),
             )
                 .chain()
                 .in_set(PhysicsSystems)
@@ -461,7 +471,7 @@ pub fn get_block_pos_below_that_affects_movement(
     on_pos(0.500001f32, chunk_storage, position, ground_contact)
 }
 
-fn handle_relative_friction_and_calculate_movement(ctx: &mut MoveCtx, block_friction: f32) -> Vec3 {
+fn handle_relative_friction_and_calculate_movement(ctx: &mut MoveCtx, block_friction: f32) {
     move_relative(
         ctx.physics,
         ctx.direction,
@@ -487,27 +497,6 @@ fn handle_relative_friction_and_calculate_movement(ctx: &mut MoveCtx, block_fric
     );
 
     move_colliding(ctx, ctx.physics.velocity);
-    // let delta_movement = entity.delta;
-    // ladders
-    //   if ((entity.horizontalCollision || entity.jumping) && (entity.onClimbable()
-    // || entity.getFeetBlockState().is(Blocks.POWDER_SNOW) &&
-    // PowderSnowBlock.canEntityWalkOnPowderSnow(entity))) {      var3 = new
-    // Vec3(var3.x, 0.2D, var3.z);   }
-
-    if ctx.movement_result.horizontal_collision() || *ctx.jumping {
-        let block_at_feet: BlockKind = ctx
-            .world
-            .chunks
-            .get_block_state(BlockPos::from(*ctx.position))
-            .unwrap_or_default()
-            .into();
-
-        if *ctx.on_climbable || block_at_feet == BlockKind::PowderSnow {
-            ctx.physics.velocity.y = 0.2;
-        }
-    }
-
-    ctx.physics.velocity
 }
 
 fn handle_on_climbable(

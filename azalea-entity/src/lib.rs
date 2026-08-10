@@ -21,7 +21,7 @@ use std::{
 };
 
 pub use attributes::Attributes;
-use azalea_block::fluid_state::FluidKind;
+use azalea_block::{BlockBehavior, fluid_state::FluidKind};
 use azalea_buf::AzBuf;
 use azalea_core::{
     aabb::Aabb,
@@ -255,12 +255,36 @@ impl Hash for LookDirection {
 impl Eq for LookDirection {}
 
 #[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
+#[derive(Clone)]
+pub enum TravelCtx {
+    Air {
+        inertia: f32,
+    },
+    Fluid {
+        moving_down: bool,
+        y: f64,
+        has_water_movement_speed: Option<f32>,
+    },
+    FallFlying {
+        
+    }
+}
+
+impl Default for TravelCtx {
+    fn default() -> Self {
+        TravelCtx::Air {
+            inertia: BlockBehavior::default().friction,
+        }
+    }
+}
+
+#[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
 #[derive(Default, Clone)]
 pub struct GroundContact {
     pub on_ground: bool,
     pub last_on_ground: bool,
     pub supporting_block: Option<BlockPos>,
-    pub on_ground_no_support: bool
+    pub on_ground_no_support: bool,
 }
 
 impl GroundContact {

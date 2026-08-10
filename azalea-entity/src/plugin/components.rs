@@ -7,7 +7,7 @@ use derive_more::{Deref, DerefMut};
 use uuid::Uuid;
 
 use crate::{
-    ActiveEffects, Attributes, EntityUuid, FluidOnEyes, GroundContact, LookDirection, MovementResult, Physics, Position, dimensions::EntityDimensions, indexing::EntityChunkPos
+    ActiveEffects, Attributes, EntityUuid, FluidOnEyes, GroundContact, LookDirection, MovementResult, Physics, Position, TravelCtx, dimensions::EntityDimensions, indexing::EntityChunkPos
 };
 
 /// A bundle of components that every entity has.
@@ -26,6 +26,7 @@ pub struct EntityBundle {
     pub physics: Physics,
     pub movement_result: MovementResult,
     pub ground_contact: GroundContact,
+    pub travel_ctx: TravelCtx,
     pub direction: LookDirection,
     pub dimensions: EntityDimensions,
     pub attributes: Attributes,
@@ -49,6 +50,7 @@ impl EntityBundle {
             last_sent_position: LastSentPosition(pos),
             physics: Physics::new(&dimensions, pos),
             movement_result: MovementResult::default(),
+            travel_ctx: TravelCtx::default(),
             ground_contact: GroundContact::default(),
             dimensions,
             direction: LookDirection::default(),

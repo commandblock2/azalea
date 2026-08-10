@@ -4,15 +4,22 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, GroundContact, HasClientLoaded, Jumping, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, metadata::{FallFlying, Sprinting}, move_relative, view_vector
+    Attributes, GroundContact, HasClientLoaded, Jumping, LocalEntity, LookDirection,
+    MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, TravelCtx,
+    metadata::{FallFlying, Sprinting},
+    move_relative, view_vector,
 };
+use azalea_registry::builtin::BlockKind;
 use azalea_world::{World, WorldName, Worlds};
 use bevy_ecs::prelude::*;
 
 use crate::{
     client_movement::ClientMovementState,
     collision::{
-        MoveCtx, MoverType, Shapes, entity_collisions::{AabbQuery, CollidableEntityQuery, get_entity_collisions}, move_colliding, world_collisions::{get_block_and_liquid_collisions, get_block_collisions}
+        MoveCtx, MoverType, Shapes,
+        entity_collisions::{AabbQuery, CollidableEntityQuery, get_entity_collisions},
+        move_colliding,
+        world_collisions::{get_block_and_liquid_collisions, get_block_collisions},
     },
     get_block_pos_below_that_affects_movement, handle_relative_friction_and_calculate_movement,
 };
@@ -20,24 +27,29 @@ use crate::{
 /// Move the entity with the given acceleration while handling friction,
 /// gravity, collisions, and some other stuff.
 #[allow(clippy::type_complexity)]
-pub fn travel(
+pub fn travel_until_moved(
     mut query: Query<
         (
-            Entity,
-            &Attributes,
-            &WorldName,
-            &OnClimbable,
-            &Jumping,
-            Option<&ClientMovementState>,
-            Option<&Sprinting>,
-            Option<&Pose>,
-            Option<&PlayerAbilities>,
-            &mut Physics,
-            &mut LookDirection,
-            &mut Position,
-            &mut MovementResult,
-            &mut GroundContact,
-            Option<&mut FallFlying>,
+            (
+                Entity,
+                &Attributes,
+                &WorldName,
+                &OnClimbable,
+                &Jumping,
+                Option<&ClientMovementState>,
+                Option<&Sprinting>,
+                Option<&Pose>,
+                Option<&PlayerAbilities>,
+            ),
+            (
+                &mut Physics,
+                &mut LookDirection,
+                &mut Position,
+                &mut MovementResult,
+                &mut GroundContact,
+                &mut TravelCtx,
+                Option<&mut FallFlying>,
+            ),
         ),
         (With<LocalEntity>, With<HasClientLoaded>),
     >,
@@ -46,21 +58,26 @@ pub fn travel(
     collidable_entity_query: CollidableEntityQuery,
 ) {
     for (
-        entity,
-        attributes,
-        world_name,
-        on_climbable,
-        jumping,
-        physics_state,
-        sprinting,
-        pose,
-        abilities,
-        mut physics,
-        direction,
-        position,
-        mut movement_result,
-        mut ground_contact,
-        fall_flying,
+        (
+            entity,
+            attributes,
+            world_name,
+            on_climbable,
+            jumping,
+            physics_state,
+            sprinting,
+            pose,
+            abilities,
+        ),
+        (
+            mut physics,
+            direction,
+            position,
+            mut movement_result,
+            mut ground_contact,
+            mut travel_ctx,
+            mut fall_flying,
+        ),
     ) in &mut query
     {
         let Some(world_lock) = worlds.get(world_name) else {
@@ -87,31 +104,178 @@ pub fn travel(
             pose: pose.copied(),
             jumping: *jumping,
             movement_result: &mut movement_result,
-            ground_contact: &mut ground_contact
+            ground_contact: &mut ground_contact,
         };
 
         if ctx.physics.is_in_water() || ctx.physics.is_in_lava() {
             // minecraft also checks for `this.isAffectedByFluids() &&
             // !this.canStandOnFluid(fluidAtBlock)` here but it doesn't matter
             // for players
-            travel_in_fluid(&mut ctx);
+            travel_in_fluid(&mut ctx, &mut travel_ctx);
         } else if fall_flying
             .as_deref()
             .is_some_and(|fall_flying| **fall_flying)
         {
-            travel_fall_flying(&mut ctx, &mut fall_flying.unwrap());
+            travel_fall_flying(&mut ctx, &mut travel_ctx, &mut fall_flying);
         } else {
-            travel_in_air(&mut ctx);
+            travel_in_air(&mut ctx, &mut travel_ctx);
+        }
+    }
+}
+
+pub fn travel_post_move(
+    mut query: Query<
+        (
+            (
+                Entity,
+                &WorldName,
+                &OnClimbable,
+                &Jumping,
+                &TravelCtx,
+                &MovementResult,
+                &Position,
+                Option<&Sprinting>,
+                &mut Physics,
+            ),
+            (),
+        ),
+        (With<LocalEntity>, With<HasClientLoaded>),
+    >,
+    worlds: Res<Worlds>,
+    aabb_query: AabbQuery,
+    collidable_entity_query: CollidableEntityQuery,
+) {
+    for (
+        (
+            entity,
+            world_name,
+            on_climbable,
+            jumping,
+            travel_ctx,
+            movement_result,
+            position,
+            sprinting,
+            mut physics,
+        ),
+        (),
+    ) in &mut query
+    {
+        let Some(world_lock) = worlds.get(world_name) else {
+            continue;
+        };
+        let world = world_lock.read();
+
+        let gravity = get_effective_gravity();
+
+        match travel_ctx {
+            TravelCtx::Air {
+                inertia,
+            } => {
+                if movement_result.horizontal_collision() || **jumping {
+                    let block_at_feet: BlockKind = world
+                        .chunks
+                        .get_block_state(BlockPos::from(position))
+                        .unwrap_or_default()
+                        .into();
+
+                    if **on_climbable || block_at_feet == BlockKind::PowderSnow {
+                        physics.velocity.y = 0.2;
+                    }
+                }
+
+                let mut movement = physics.velocity;
+
+                movement.y -= gravity;
+
+                // if (this.shouldDiscardFriction()) {
+                //     this.setDeltaMovement(movement.x, yMovement, movement.z);
+                // } else {
+                //     this.setDeltaMovement(movement.x * (double)inertia, yMovement *
+                // 0.9800000190734863D, movement.z * (double)inertia); }
+
+                // if should_discard_friction(self) {
+
+                if false {
+                    physics.velocity = movement;
+                } else {
+                    physics.velocity = Vec3 {
+                        x: movement.x * *inertia as f64,
+                        y: movement.y * 0.9800000190734863f64,
+                        z: movement.z * *inertia as f64,
+                    };
+                }
+            }
+            TravelCtx::Fluid {
+                moving_down,
+                y,
+                has_water_movement_speed,
+            } => {
+                let sprinting = *sprinting.unwrap_or(&Sprinting(false));
+                if let Some(water_movement_speed) = has_water_movement_speed {
+                    let mut new_velocity = physics.velocity;
+                    if movement_result.horizontal_collision() && **on_climbable {
+                        // underwater ladders
+                        new_velocity.y = 0.2;
+                    }
+                    new_velocity.x *= *water_movement_speed as f64;
+                    new_velocity.y *= 0.8;
+                    new_velocity.z *= *water_movement_speed as f64;
+                    physics.velocity = get_fluid_falling_adjusted_movement(
+                        gravity,
+                        *moving_down,
+                        new_velocity,
+                        sprinting,
+                    );
+                } else {
+                    if physics.lava_fluid_height <= fluid_jump_threshold() {
+                        physics.velocity.x *= 0.5;
+                        physics.velocity.y *= 0.8;
+                        physics.velocity.z *= 0.5;
+                        let new_velocity = get_fluid_falling_adjusted_movement(
+                            gravity,
+                            *moving_down,
+                            physics.velocity,
+                            sprinting,
+                        );
+                        physics.velocity = new_velocity;
+                    } else {
+                        physics.velocity *= 0.5;
+                    }
+
+                    if gravity != 0.0 {
+                        physics.velocity.y -= gravity / 4.0;
+                    }
+                }
+
+                let velocity = physics.velocity;
+                if movement_result.horizontal_collision()
+                    && is_free(
+                        &world,
+                        entity,
+                        &aabb_query,
+                        &collidable_entity_query,
+                        &physics,
+                        physics.bounding_box,
+                        velocity.up(0.6).down(position.y).up(*y),
+                    )
+                {
+                    physics.velocity.y = 0.3;
+                }
+            }
+            TravelCtx::FallFlying {} => {
+                // nothing post travel for elytra I think
+            }
         }
     }
 }
 
 /// The usual movement when we're not in water or using an elytra.
-fn travel_in_air(ctx: &mut MoveCtx) {
-    let gravity = get_effective_gravity();
-
-    let block_pos_below =
-        get_block_pos_below_that_affects_movement(&ctx.world.chunks, *ctx.position, ctx.ground_contact);
+fn travel_in_air(ctx: &mut MoveCtx, travel_ctx: &mut TravelCtx) {
+    let block_pos_below = get_block_pos_below_that_affects_movement(
+        &ctx.world.chunks,
+        *ctx.position,
+        ctx.ground_contact,
+    );
 
     let block_below = ctx
         .world
@@ -120,6 +284,7 @@ fn travel_in_air(ctx: &mut MoveCtx) {
         .unwrap_or(BlockState::AIR);
 
     let block_friction = block_below.behavior().friction;
+
     let inertia = if ctx.ground_contact.on_ground() {
         block_friction * 0.91
     } else {
@@ -127,32 +292,13 @@ fn travel_in_air(ctx: &mut MoveCtx) {
     };
 
     // this applies the current delta
-    let mut movement = handle_relative_friction_and_calculate_movement(ctx, block_friction);
-
-    movement.y -= gravity;
-
-    // if (this.shouldDiscardFriction()) {
-    //     this.setDeltaMovement(movement.x, yMovement, movement.z);
-    // } else {
-    //     this.setDeltaMovement(movement.x * (double)inertia, yMovement *
-    // 0.9800000190734863D, movement.z * (double)inertia); }
-
-    // if should_discard_friction(self) {
-    if false {
-        ctx.physics.velocity = movement;
-    } else {
-        ctx.physics.velocity = Vec3 {
-            x: movement.x * inertia as f64,
-            y: movement.y * 0.9800000190734863f64,
-            z: movement.z * inertia as f64,
-        };
-    }
+    handle_relative_friction_and_calculate_movement(ctx, block_friction);
+    *travel_ctx = TravelCtx::Air { inertia };
 }
 
-fn travel_in_fluid(ctx: &mut MoveCtx) {
+fn travel_in_fluid(ctx: &mut MoveCtx, travel_ctx: &mut TravelCtx) {
     let moving_down = ctx.physics.velocity.y <= 0.;
     let y = ctx.position.y;
-    let gravity = get_effective_gravity();
 
     let acceleration = Vec3::new(
         ctx.physics.x_acceleration as f64,
@@ -182,60 +328,33 @@ fn travel_in_fluid(ctx: &mut MoveCtx) {
         move_relative(ctx.physics, ctx.direction, speed, acceleration);
         move_colliding(ctx, ctx.physics.velocity);
 
-        let mut new_velocity = ctx.physics.velocity;
-        if ctx.movement_result.horizontal_collision() && *ctx.on_climbable {
-            // underwater ladders
-            new_velocity.y = 0.2;
-        }
-        new_velocity.x *= water_movement_speed as f64;
-        new_velocity.y *= 0.8;
-        new_velocity.z *= water_movement_speed as f64;
-        ctx.physics.velocity =
-            get_fluid_falling_adjusted_movement(gravity, moving_down, new_velocity, ctx.sprinting);
+        *travel_ctx = TravelCtx::Fluid {
+            moving_down,
+            y,
+            has_water_movement_speed: Some(water_movement_speed),
+        };
     } else {
         move_relative(ctx.physics, ctx.direction, 0.02, acceleration);
         move_colliding(ctx, ctx.physics.velocity);
 
-        if ctx.physics.lava_fluid_height <= fluid_jump_threshold() {
-            ctx.physics.velocity.x *= 0.5;
-            ctx.physics.velocity.y *= 0.8;
-            ctx.physics.velocity.z *= 0.5;
-            let new_velocity = get_fluid_falling_adjusted_movement(
-                gravity,
-                moving_down,
-                ctx.physics.velocity,
-                ctx.sprinting,
-            );
-            ctx.physics.velocity = new_velocity;
-        } else {
-            ctx.physics.velocity *= 0.5;
-        }
-
-        if gravity != 0.0 {
-            ctx.physics.velocity.y -= gravity / 4.0;
-        }
-    }
-
-    let velocity = ctx.physics.velocity;
-    if ctx.movement_result.horizontal_collision()
-        && is_free(
-            ctx.world,
-            ctx.source_entity,
-            ctx.aabb_query,
-            ctx.collidable_entity_query,
-            ctx.physics,
-            ctx.physics.bounding_box,
-            velocity.up(0.6).down(ctx.position.y).up(y),
-        )
-    {
-        ctx.physics.velocity.y = 0.3;
+        *travel_ctx = TravelCtx::Fluid {
+            moving_down,
+            y,
+            has_water_movement_speed: None,
+        };
     }
 }
 
-fn travel_fall_flying(ctx: &mut MoveCtx, fall_flying: &mut FallFlying) {
+fn travel_fall_flying(
+    ctx: &mut MoveCtx,
+    travel_ctx: &mut TravelCtx,
+    fall_flying: &mut Option<Mut<FallFlying>>,
+) {
     if *ctx.on_climbable {
-        travel_in_air(ctx);
-        **fall_flying = false; // vanilla first set to true then set to false again, quite confusing
+        travel_in_air(ctx, travel_ctx);
+        if let Some(fall_flying) = fall_flying {
+            ***fall_flying = false; // vanilla first set to true then set to false again, quite confusing
+        }
     } else {
         let look = ctx.direction;
         let look_angle = view_vector(look);
@@ -283,6 +402,7 @@ fn travel_fall_flying(ctx: &mut MoveCtx, fall_flying: &mut FallFlying) {
         ctx.physics.velocity = movement.multiply(0.99f32 as f64, 0.98f32 as f64, 0.99f32 as f64);
 
         move_colliding(ctx, ctx.physics.velocity);
+        *travel_ctx = TravelCtx::FallFlying {};
     }
 }
 
