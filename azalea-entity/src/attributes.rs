@@ -29,7 +29,7 @@ pub struct Attributes {
     pub step_height: AttributeInstance,
 
     pub bounciness: AttributeInstance,
-    pub air_drag: AttributeInstance
+    pub air_drag: AttributeInstance,
 }
 
 impl Attributes {

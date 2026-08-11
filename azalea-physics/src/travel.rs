@@ -4,7 +4,11 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, GroundContact, HasClientLoaded, Jumping, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, StuckSpeedMultiplier, TravelCtx, metadata::{FallFlying, Sprinting}, move_relative, view_vector
+    Attributes, GroundContact, HasClientLoaded, Jumping, LocalEntity, LookDirection,
+    MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, StuckSpeedMultiplier,
+    TravelCtx,
+    metadata::{FallFlying, Sprinting},
+    move_relative, view_vector,
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{World, WorldName, Worlds};
@@ -104,7 +108,7 @@ pub fn travel_until_moved(
             jumping: *jumping,
             movement_result: &mut movement_result,
             ground_contact: &mut ground_contact,
-            stuck_speed_multipler: &mut stuck_speed_multipler
+            stuck_speed_multipler: &mut stuck_speed_multipler,
         };
 
         if ctx.physics.is_in_water() || ctx.physics.is_in_lava() {

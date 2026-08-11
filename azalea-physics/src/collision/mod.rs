@@ -16,7 +16,8 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, GroundContact, Jumping, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, StuckSpeedMultiplier, metadata::Sprinting
+    Attributes, GroundContact, Jumping, LookDirection, MovementResult, OnClimbable, Physics,
+    PlayerAbilities, Pose, Position, StuckSpeedMultiplier, metadata::Sprinting,
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{ChunkStorage, World};

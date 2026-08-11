@@ -254,11 +254,10 @@ impl Hash for LookDirection {
 }
 impl Eq for LookDirection {}
 
-
 #[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
 #[derive(Default, Clone)]
 pub struct StuckSpeedMultiplier {
-    pub modifier: Vec3
+    pub modifier: Vec3,
 }
 
 #[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
@@ -462,7 +461,7 @@ impl Attributes {
             step_height: AttributeInstance::new(0.6),
             block_break_speed: AttributeInstance::new(1.0),
             bounciness: AttributeInstance::new(0.0),
-            air_drag: AttributeInstance::new(1.0)
+            air_drag: AttributeInstance::new(1.0),
         }
     }
 }
