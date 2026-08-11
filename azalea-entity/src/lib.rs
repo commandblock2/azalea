@@ -254,6 +254,13 @@ impl Hash for LookDirection {
 }
 impl Eq for LookDirection {}
 
+
+#[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
+#[derive(Default, Clone)]
+pub struct StuckSpeedMultiplier {
+    pub modifier: Vec3
+}
+
 #[cfg_attr(feature = "bevy_ecs", derive(bevy_ecs::component::Component))]
 #[derive(Clone)]
 pub enum TravelCtx {

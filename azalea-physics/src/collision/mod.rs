@@ -16,8 +16,7 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, GroundContact, Jumping, LookDirection, MovementResult, OnClimbable, Physics,
-    PlayerAbilities, Pose, Position, metadata::Sprinting,
+    Attributes, GroundContact, Jumping, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, StuckSpeedMultiplier, metadata::Sprinting
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{ChunkStorage, World};
@@ -130,6 +129,7 @@ pub struct MoveCtx<'world, 'state, 'a, 'b> {
 
     pub movement_result: &'a mut MovementResult,
     pub ground_contact: &'a mut GroundContact,
+    pub stuck_speed_multipler: &'a mut StuckSpeedMultiplier,
 }
 
 /// Move an entity by a given delta, checking for collisions.
@@ -149,11 +149,12 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     //     }
     // }
 
-    // if (this.stuckSpeedMultiplier.lengthSqr() > 1.0E-7D) {
-    //     var2 = var2.multiply(this.stuckSpeedMultiplier);
-    //     this.stuckSpeedMultiplier = Vec3.ZERO;
-    //     this.setDeltaMovement(Vec3.ZERO);
-    // }
+    if ctx.stuck_speed_multipler.modifier.length_squared() > 1.0E-7 {
+        let modifier = ctx.stuck_speed_multipler.modifier;
+        movement = movement.multiply(modifier.x, modifier.y, modifier.z);
+        ctx.stuck_speed_multipler.modifier = Vec3::ZERO;
+        ctx.physics.velocity = Vec3::ZERO;
+    }
 
     movement = maybe_back_off_from_edge(ctx, movement);
     let collide_result = collide(ctx, movement);
@@ -220,29 +221,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
         // blockBelow.stepOn(this.level, blockPosBelow, blockStateBelow,
         // this);
     }
-
-    // sounds
-
-    // this.tryCheckInsideBlocks();
-
-    // float var25 = this.getBlockSpeedFactor();
-    // this.setDeltaMovement(this.getDeltaMovement().multiply((double)var25,
-    // 1.0D, (double)var25)); if (this.level.getBlockStatesIfLoaded(this.
-    // getBoundingBox().deflate(1.0E-6D)).noneMatch((var0) -> {
-    //    return var0.is(BlockTags.FIRE) || var0.is(Blocks.LAVA);
-    // })) {
-    //    if (this.remainingFireTicks <= 0) {
-    //       this.setRemainingFireTicks(-this.getFireImmuneTicks());
-    //    }
-
-    //    if (this.wasOnFire && (this.isInPowderSnow ||
-    // this.isInWaterRainOrBubble())) {       this.
-    // playEntityOnFireExtinguishedSound();    }
-    // }
-
-    // if (this.isOnFire() && (this.isInPowderSnow ||
-    // this.isInWaterRainOrBubble())) {    this.setRemainingFireTicks(-this.
-    // getFireImmuneTicks()); }
 }
 
 fn maybe_back_off_from_edge(move_ctx: &mut MoveCtx, mut movement: Vec3) -> Vec3 {

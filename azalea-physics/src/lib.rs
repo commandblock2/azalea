@@ -19,7 +19,7 @@ use azalea_core::{
 use azalea_entity::{
     ActiveEffects, Attributes, EntityGeometryUpdateSystems, EntityKindComponent, GroundContact,
     HasClientLoaded, Jumping, LocalEntity, LookDirection, OnClimbable, Physics, Pose, Position,
-    dimensions::EntityDimensions, metadata::Sprinting, move_relative, on_pos,
+    StuckSpeedMultiplier, dimensions::EntityDimensions, metadata::Sprinting, move_relative, on_pos,
 };
 use azalea_registry::builtin::{BlockKind, EntityKind, MobEffect};
 use azalea_world::{ChunkStorage, World, WorldName, Worlds};
@@ -218,12 +218,21 @@ fn go_down_in_water(physics: &mut Physics) {
 #[allow(clippy::type_complexity)]
 pub fn apply_effects_from_blocks(
     mut query: Query<
-        (&mut Physics, &Position, &EntityDimensions, &WorldName),
+        (
+            &mut Physics,
+            &mut StuckSpeedMultiplier,
+            &ActiveEffects,
+            &Position,
+            &EntityDimensions,
+            &WorldName,
+        ),
         (With<LocalEntity>, With<HasClientLoaded>),
     >,
     worlds: Res<Worlds>,
 ) {
-    for (mut physics, position, dimensions, world_name) in &mut query {
+    for (mut physics, mut stuck_speed_multiplier, effects, position, dimensions, world_name) in
+        &mut query
+    {
         let Some(world_lock) = worlds.get(world_name) else {
             continue;
         };
@@ -246,7 +255,14 @@ pub fn apply_effects_from_blocks(
             to: **position,
         }];
 
-        check_inside_blocks(&mut physics, dimensions, &world, &movement_this_tick);
+        check_inside_blocks(
+            &mut physics,
+            &mut stuck_speed_multiplier,
+            effects,
+            dimensions,
+            &world,
+            &movement_this_tick,
+        );
     }
 }
 
@@ -295,6 +311,8 @@ pub fn apply_speed_factor(
 
 fn check_inside_blocks(
     physics: &mut Physics,
+    stuck_speed_multipler: &mut StuckSpeedMultiplier,
+    effect: &ActiveEffects,
     dimensions: &EntityDimensions,
     world: &World,
     movements: &[EntityMovement],
@@ -348,7 +366,14 @@ fn check_inside_blocks(
                 continue;
             }
 
-            handle_entity_inside_block(world, traversed_block_state, traversed_block, physics);
+            handle_entity_inside_block(
+                world,
+                traversed_block_state,
+                effect,
+                traversed_block,
+                stuck_speed_multipler,
+                physics,
+            );
 
             blocks_inside.push(traversed_block_state);
         }
@@ -378,7 +403,9 @@ fn collided_with_shape_moving_from(
 fn handle_entity_inside_block(
     world: &World,
     block: BlockState,
+    effect: &ActiveEffects,
     block_pos: BlockPos,
+    stuck_speed_multipler: &mut StuckSpeedMultiplier,
     physics: &mut Physics,
 ) {
     let registry_block = BlockKind::from(block);
@@ -408,6 +435,35 @@ fn handle_entity_inside_block(
                 };
                 velocity.y = new_y;
                 physics.reset_fall_distance();
+            }
+        }
+        BlockKind::Cobweb => {
+            stuck_speed_multipler.modifier = if effect.get(MobEffect::Weaving).is_some() {
+                Vec3 {
+                    x: 0.5,
+                    y: 0.25,
+                    z: 0.5,
+                }
+            } else {
+                Vec3 {
+                    x: 0.25,
+                    y: 0.05f32 as f64,
+                    z: 0.25,
+                }
+            }
+        }
+        BlockKind::SweetBerryBush => {
+            stuck_speed_multipler.modifier = Vec3 {
+                x: 0.8f32 as f64,
+                y: 0.75,
+                z: 0.8f32 as f64,
+            }
+        }
+        BlockKind::PowderSnow => {
+            stuck_speed_multipler.modifier = Vec3 {
+                x: 0.9f32 as f64,
+                y: 1.5,
+                z: 0.9f32 as f64,
             }
         }
         _ => {}
