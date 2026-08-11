@@ -8,7 +8,7 @@ pub mod fluids;
 pub mod support;
 pub mod travel;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, ops::Add};
 
 use azalea_block::{BlockState, fluid_state::FluidState, properties};
 use azalea_core::{
@@ -434,14 +434,17 @@ fn check_inside_blocks(
     dimensions: &EntityDimensions,
     world: &World,
     movements: &[EntityMovement],
-) -> Vec<BlockState> {
+) -> Vec<BlockPos> {
     let mut blocks_inside = Vec::new();
-    let mut visited_blocks = HashSet::<BlockState>::new();
+    let mut visited_blocks = HashSet::<BlockPos>::new();
 
     for movement in movements {
         let bounding_box_at_target = dimensions
             .make_bounding_box(movement.to)
             .deflate_all(1.0E-5);
+
+        let moved_far = movement.from.distance_squared_to(movement.to)
+            > 0.9999900000002526 * 0.9999900000002526;
 
         for traversed_block in
             box_traverse_blocks(movement.from, movement.to, &bounding_box_at_target)
@@ -454,7 +457,7 @@ fn check_inside_blocks(
             if traversed_block_state.is_air() {
                 continue;
             }
-            if !visited_blocks.insert(traversed_block_state) {
+            if !visited_blocks.insert(traversed_block) {
                 continue;
             }
 
@@ -485,6 +488,15 @@ fn check_inside_blocks(
             }
 
             handle_entity_inside_block(
+                moved_far
+                    || bounding_box_at_target.intersects_vec3(
+                        traversed_block.to_vec3_floored(),
+                        traversed_block.to_vec3_floored().add(Vec3 {
+                            x: 1.0,
+                            y: 1.0,
+                            z: 1.0,
+                        }),
+                    ),
                 world,
                 traversed_block_state,
                 effect,
@@ -496,7 +508,7 @@ fn check_inside_blocks(
                 physics,
             );
 
-            blocks_inside.push(traversed_block_state);
+            blocks_inside.push(traversed_block);
         }
     }
 
@@ -522,6 +534,7 @@ fn collided_with_shape_moving_from(
 
 // BlockBehavior.entityInside
 fn handle_entity_inside_block(
+    precise: bool,
     world: &World,
     block: BlockState,
     effect: &ActiveEffects,
@@ -536,6 +549,10 @@ fn handle_entity_inside_block(
     #[allow(clippy::single_match)]
     match registry_block {
         BlockKind::BubbleColumn => {
+            if !precise {
+                return;
+            }
+
             let block_above = world.get_block_state(block_pos.up(1)).unwrap_or_default();
             let is_block_above_empty =
                 block_above.is_collision_shape_empty() && FluidState::from(block_above).is_empty();
@@ -605,6 +622,8 @@ fn handle_entity_inside_block(
                 } else {
                     physics.velocity.y = NEW_VELOCITY_Y;
                 }
+
+                physics.reset_fall_distance();
             }
         }
         _ => {}
