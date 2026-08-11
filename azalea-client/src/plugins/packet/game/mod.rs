@@ -11,6 +11,7 @@ use azalea_core::{
 use azalea_entity::{
     Dead, EntityBundle, EntityKindComponent, GroundContact, HasClientLoaded, LoadedBy, LocalEntity, LookDirection, Physics, PlayerAbilities, Position, effect_events::{AddEffectEvent, RemoveEffectsEvent}, indexing::{EntityIdIndex, EntityUuidIndex}, inventory::Inventory, metadata::{Health, apply_metadata}
 };
+use azalea_physics::support::PositionUpdatedFromServer;
 use azalea_protocol::{
     common::movements::MoveFlags,
     packets::{
@@ -1535,6 +1536,7 @@ impl GamePacketHandler<'_> {
                 }
 
                 ground_contact.set_on_ground(new_on_ground);
+                commands.entity(entity).insert(PositionUpdatedFromServer);
             },
         );
     }
@@ -1707,4 +1709,5 @@ fn move_entity(
     }
 
     ground_contact.set_on_ground(p.on_ground);
+    commands.entity(entity).insert(PositionUpdatedFromServer);
 }

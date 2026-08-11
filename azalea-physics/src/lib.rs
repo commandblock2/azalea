@@ -31,7 +31,9 @@ use collision::{BLOCK_SHAPE, BlockWithShape, VoxelShape, move_colliding};
 use crate::{
     client_movement::ClientMovementState,
     collision::{MoveCtx, entity_collisions::update_last_bounding_box},
-    support::{SupportingBlockUpdate, update_main_supporting_block_pos},
+    support::{
+        clear_server_update_flag, update_main_supporting_block_pos_from_server, update_main_supporting_block_pos_local,
+    },
     travel::travel_post_move,
 };
 
@@ -39,7 +41,8 @@ use crate::{
 #[derive(Clone, Debug, Eq, Hash, PartialEq, SystemSet)]
 pub struct PhysicsSystems;
 
-/// A Bevy [`SystemSet`] for running the original travel function (now broken into multiple systems)
+/// A Bevy [`SystemSet`] for running the original travel function (now broken
+/// into multiple systems)
 #[derive(Clone, Debug, Eq, Hash, PartialEq, SystemSet)]
 pub struct TravelSystems;
 
@@ -55,9 +58,7 @@ impl Plugin for PhysicsPlugin {
                 ai_step,
                 (
                     travel::travel_until_moved.before(EntityGeometryUpdateSystems),
-                    update_main_supporting_block_pos
-                        .with_input(SupportingBlockUpdate::LocalMovement)
-                        .after(EntityGeometryUpdateSystems),
+                    update_main_supporting_block_pos_local.after(EntityGeometryUpdateSystems),
                     update_falling_distance,
                     apply_effects_from_blocks,
                     apply_speed_factor,
@@ -74,8 +75,8 @@ impl Plugin for PhysicsPlugin {
         .add_systems(
             Update,
             (
-                update_main_supporting_block_pos
-                    .with_input(SupportingBlockUpdate::PositionUpdateFromServer),
+                update_main_supporting_block_pos_from_server,
+                clear_server_update_flag,
                 update_last_bounding_box,
             )
                 .chain()
