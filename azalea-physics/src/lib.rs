@@ -20,6 +20,7 @@ use azalea_entity::{
     ActiveEffects, Attributes, EntityGeometryUpdateSystems, EntityKindComponent, GroundContact,
     HasClientLoaded, Jumping, LocalEntity, LookDirection, OnClimbable, Physics, Pose, Position,
     StuckSpeedMultiplier, dimensions::EntityDimensions, metadata::Sprinting, move_relative, on_pos,
+    on_pos_legacy,
 };
 use azalea_registry::builtin::{BlockKind, EntityKind, MobEffect};
 use azalea_world::{ChunkStorage, World, WorldName, Worlds};
@@ -222,16 +223,26 @@ pub fn apply_effects_from_blocks(
             &mut Physics,
             &mut StuckSpeedMultiplier,
             &ActiveEffects,
+            &GroundContact,
             &Position,
             &EntityDimensions,
             &WorldName,
+            Option<&ClientMovementState>,
         ),
         (With<LocalEntity>, With<HasClientLoaded>),
     >,
     worlds: Res<Worlds>,
 ) {
-    for (mut physics, mut stuck_speed_multiplier, effects, position, dimensions, world_name) in
-        &mut query
+    for (
+        mut physics,
+        mut stuck_speed_multiplier,
+        effects,
+        ground_contact,
+        position,
+        dimensions,
+        world_name,
+        client_movement,
+    ) in &mut query
     {
         let Some(world_lock) = worlds.get(world_name) else {
             continue;
@@ -242,11 +253,14 @@ pub fn apply_effects_from_blocks(
         //     continue
         // }
 
-        // if (this.onGround()) {
-        //     BlockPos var3 = this.getOnPosLegacy();
-        //     BlockState var4 = this.level().getBlockState(var3);
-        //     var4.getBlock().stepOn(this.level(), var3, var4, this);
-        //  }
+        if ground_contact.on_ground() {
+            let block_pos = on_pos_legacy(&world.chunks, *position, ground_contact);
+            if let Some(state) = world.chunks.get_block_state(block_pos) {
+                if let Some(client_movement) = client_movement {
+                    handle_entity_step_on(state.as_block_kind(), client_movement, &mut physics);
+                }
+            }
+        }
 
         // minecraft adds more entries to the list when the code is running on the
         // server
@@ -470,6 +484,26 @@ fn handle_entity_inside_block(
     }
 }
 
+// can't imagine that's the only block that currently has client side effect
+// when stepping on, therefore minimal args
+fn handle_entity_step_on(
+    block: BlockKind,
+    client_movement: &ClientMovementState,
+    physics: &mut Physics,
+) {
+    match block {
+        BlockKind::SlimeBlock => {
+            let y_absolute = physics.velocity.y.abs();
+            if y_absolute > 0.1 && !client_movement.trying_to_crouch {
+                let scale = 0.4 + y_absolute * 0.2;
+                physics.velocity.x *= scale;
+                physics.velocity.z *= scale;
+            }
+        }
+
+        _ => {}
+    }
+}
 pub struct EntityMovement {
     pub from: Vec3,
     pub to: Vec3,

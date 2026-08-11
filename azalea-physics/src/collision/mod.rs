@@ -216,11 +216,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
         // 0
         physics.velocity.y = 0.;
     }
-
-    if on_ground {
-        // blockBelow.stepOn(this.level, blockPosBelow, blockStateBelow,
-        // this);
-    }
 }
 
 fn maybe_back_off_from_edge(move_ctx: &mut MoveCtx, mut movement: Vec3) -> Vec3 {
