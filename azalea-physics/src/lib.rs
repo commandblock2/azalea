@@ -32,7 +32,8 @@ use crate::{
     client_movement::ClientMovementState,
     collision::{MoveCtx, entity_collisions::update_last_bounding_box},
     support::{
-        clear_server_update_flag, update_main_supporting_block_pos_from_server, update_main_supporting_block_pos_local,
+        clear_server_update_flag, update_main_supporting_block_pos_from_server,
+        update_main_supporting_block_pos_local,
     },
     travel::travel_post_move,
 };

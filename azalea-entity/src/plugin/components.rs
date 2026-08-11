@@ -7,7 +7,9 @@ use derive_more::{Deref, DerefMut};
 use uuid::Uuid;
 
 use crate::{
-    ActiveEffects, Attributes, EntityUuid, FluidOnEyes, GroundContact, LookDirection, MovementResult, Physics, Position, TravelCtx, dimensions::EntityDimensions, indexing::EntityChunkPos
+    ActiveEffects, Attributes, EntityUuid, FluidOnEyes, GroundContact, LookDirection,
+    MovementResult, Physics, Position, TravelCtx, dimensions::EntityDimensions,
+    indexing::EntityChunkPos,
 };
 
 /// A bundle of components that every entity has.

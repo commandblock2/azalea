@@ -27,7 +27,10 @@ use indexing::EntityUuidIndex;
 use tracing::debug;
 
 use crate::{
-    FluidOnEyes, GroundContact, LookDirection, Physics, Pose, Position, dimensions::{EntityDimensions, calculate_dimensions}, metadata::{self, Health, Player}, plugin::effect_events::{handle_add_effect, handle_remove_effects}
+    FluidOnEyes, GroundContact, LookDirection, Physics, Pose, Position,
+    dimensions::{EntityDimensions, calculate_dimensions},
+    metadata::{self, Health, Player},
+    plugin::effect_events::{handle_add_effect, handle_remove_effects},
 };
 
 /// A Bevy [`SystemSet`] for various types of entity updates.
@@ -295,7 +298,11 @@ pub fn update_in_loaded_chunk(
 }
 
 /// Get the position of the block below the entity, but a little lower.
-pub fn on_pos_legacy(chunk_storage: &ChunkStorage, pos: Position, ground_contact: &GroundContact) -> BlockPos {
+pub fn on_pos_legacy(
+    chunk_storage: &ChunkStorage,
+    pos: Position,
+    ground_contact: &GroundContact,
+) -> BlockPos {
     on_pos(0.2, chunk_storage, pos, ground_contact)
 }
 

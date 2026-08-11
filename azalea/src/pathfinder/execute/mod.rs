@@ -85,8 +85,16 @@ pub fn tick_execute_path(
     mut jump_events: MessageWriter<JumpEvent>,
     mut start_mining_events: MessageWriter<StartMiningBlockEvent>,
 ) {
-    for (entity, mut executing_path, position, physics, ground_contact, mining, world_holder, inventory) in
-        &mut query
+    for (
+        entity,
+        mut executing_path,
+        position,
+        physics,
+        ground_contact,
+        mining,
+        world_holder,
+        inventory,
+    ) in &mut query
     {
         executing_path.ticks_since_last_node_reached += 1;
 
@@ -134,7 +142,16 @@ pub fn check_node_reached(
     mut commands: Commands,
     worlds: Res<Worlds>,
 ) {
-    for (entity, mut pathfinder, mut executing_path, position, physics, ground_contact, world_name) in &mut query {
+    for (
+        entity,
+        mut pathfinder,
+        mut executing_path,
+        position,
+        physics,
+        ground_contact,
+        world_name,
+    ) in &mut query
+    {
         let Some(world) = worlds.get(world_name) else {
             warn!("entity is pathfinding but not in a valid world");
             continue;
@@ -159,7 +176,7 @@ pub fn check_node_reached(
                     start: executing_path.last_reached_node,
                     position: **position,
                     physics,
-                    ground_contact
+                    ground_contact,
                 };
                 let extra_check = if i == executing_path.path.len() - 1
                     // only do the extra check if we don't have a new path immediately queued up

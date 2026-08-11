@@ -168,9 +168,7 @@ pub fn travel_post_move(
         let gravity = get_effective_gravity();
 
         match travel_ctx {
-            TravelCtx::Air {
-                inertia,
-            } => {
+            TravelCtx::Air { inertia } => {
                 if movement_result.horizontal_collision() || **jumping {
                     let block_at_feet: BlockKind = world
                         .chunks

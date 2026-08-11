@@ -9,7 +9,12 @@ use azalea_core::{
     position::{ChunkPos, Vec3},
 };
 use azalea_entity::{
-    Dead, EntityBundle, EntityKindComponent, GroundContact, HasClientLoaded, LoadedBy, LocalEntity, LookDirection, Physics, PlayerAbilities, Position, effect_events::{AddEffectEvent, RemoveEffectsEvent}, indexing::{EntityIdIndex, EntityUuidIndex}, inventory::Inventory, metadata::{Health, apply_metadata}
+    Dead, EntityBundle, EntityKindComponent, GroundContact, HasClientLoaded, LoadedBy, LocalEntity,
+    LookDirection, Physics, PlayerAbilities, Position,
+    effect_events::{AddEffectEvent, RemoveEffectsEvent},
+    indexing::{EntityIdIndex, EntityUuidIndex},
+    inventory::Inventory,
+    metadata::{Health, apply_metadata},
 };
 use azalea_physics::support::PositionUpdatedFromServer;
 use azalea_protocol::{
@@ -1513,8 +1518,13 @@ impl GamePacketHandler<'_> {
                     return;
                 }
 
-                let Ok((mut physics, mut ground_contact, mut position, mut look_direction, local_entity)) =
-                    entity_query.get_mut(entity)
+                let Ok((
+                    mut physics,
+                    mut ground_contact,
+                    mut position,
+                    mut look_direction,
+                    local_entity,
+                )) = entity_query.get_mut(entity)
                 else {
                     return;
                 };
@@ -1656,8 +1666,16 @@ struct MoveEntity {
     pub on_ground: bool,
 }
 
-type MoveEntityQuery<'world, 'state, 'a> =
-    Query<'world, 'state, (&'a mut Physics, &'a mut GroundContact, &'a mut Position, &'a mut LookDirection)>;
+type MoveEntityQuery<'world, 'state, 'a> = Query<
+    'world,
+    'state,
+    (
+        &'a mut Physics,
+        &'a mut GroundContact,
+        &'a mut Position,
+        &'a mut LookDirection,
+    ),
+>;
 
 fn move_entity(
     player_entity: Entity,
@@ -1678,7 +1696,9 @@ fn move_entity(
         return;
     };
 
-    let Ok((mut physics, mut ground_contact, mut position, mut look_direction)) = entity_query.get_mut(entity) else {
+    let Ok((mut physics, mut ground_contact, mut position, mut look_direction)) =
+        entity_query.get_mut(entity)
+    else {
         debug!("Got move entity packet for entity with missing components {entity_id}");
         return;
     };

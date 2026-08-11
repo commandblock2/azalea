@@ -16,7 +16,8 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    Attributes, GroundContact, Jumping, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, metadata::Sprinting
+    Attributes, GroundContact, Jumping, LookDirection, MovementResult, OnClimbable, Physics,
+    PlayerAbilities, Pose, Position, metadata::Sprinting,
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{ChunkStorage, World};
@@ -29,10 +30,7 @@ use tracing::warn;
 
 use self::world_collisions::get_block_collisions;
 use crate::{
-    client_movement::ClientMovementState,
-    collision::
-        entity_collisions::AabbQuery
-    ,
+    client_movement::ClientMovementState, collision::entity_collisions::AabbQuery,
     travel::no_collision,
 };
 
@@ -131,7 +129,7 @@ pub struct MoveCtx<'world, 'state, 'a, 'b> {
     pub jumping: Jumping,
 
     pub movement_result: &'a mut MovementResult,
-    pub ground_contact: &'a mut GroundContact
+    pub ground_contact: &'a mut GroundContact,
 }
 
 /// Move an entity by a given delta, checking for collisions.
@@ -246,8 +244,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
     // this.isInWaterRainOrBubble())) {    this.setRemainingFireTicks(-this.
     // getFireImmuneTicks()); }
 }
-
-
 
 fn maybe_back_off_from_edge(move_ctx: &mut MoveCtx, mut movement: Vec3) -> Vec3 {
     let is_staying_on_ground_surface = move_ctx.physics_state.is_some_and(|s| s.trying_to_crouch);

@@ -235,7 +235,7 @@ pub struct IsReachedCtx<'a> {
     pub start: BlockPos,
     pub position: Vec3,
     pub physics: &'a azalea_entity::Physics,
-    pub ground_contact: &'a azalea_entity::GroundContact
+    pub ground_contact: &'a azalea_entity::GroundContact,
 }
 
 /// Returns whether the entity is at the node and should start going to the

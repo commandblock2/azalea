@@ -5,11 +5,19 @@ use azalea_core::{
     tick::GameTick,
 };
 use azalea_entity::{
-    Attributes, Crouching, GroundContact, HasClientLoaded, Jumping, LastSentPosition, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position, dimensions::calculate_dimensions, inventory::Inventory, metadata::{self, FallFlying, Sprinting}, update_bounding_box, update_dimensions
+    Attributes, Crouching, GroundContact, HasClientLoaded, Jumping, LastSentPosition, LocalEntity,
+    LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position,
+    dimensions::calculate_dimensions,
+    inventory::Inventory,
+    metadata::{self, FallFlying, Sprinting},
+    update_bounding_box, update_dimensions,
 };
 use azalea_inventory::components::{self, EquipmentSlot};
 use azalea_physics::{
-    PhysicsSystems, TravelSystems, ai_step, client_movement::{ClientMovementState, SprintDirection, WalkDirection}, collision::entity_collisions::{AabbQuery, CollidableEntityQuery, update_last_bounding_box}, travel::no_collision
+    PhysicsSystems, TravelSystems, ai_step,
+    client_movement::{ClientMovementState, SprintDirection, WalkDirection},
+    collision::entity_collisions::{AabbQuery, CollidableEntityQuery, update_last_bounding_box},
+    travel::no_collision,
 };
 use azalea_protocol::{
     common::movements::MoveFlags,
@@ -61,8 +69,7 @@ impl Plugin for MovementPlugin {
                         .before(ai_step)
                         .before(azalea_physics::fluids::update_in_water_state_and_do_fluid_pushing),
                     send_player_input_packet,
-                    update_pose
-                        .after(TravelSystems),
+                    update_pose.after(TravelSystems),
                     update_dimensions,
                     update_bounding_box,
                     send_sprinting_if_needed.after(PhysicsSystems),
@@ -412,7 +419,8 @@ pub fn local_player_ai_step(
                 || (is_passenger && !vehicle_can_sprint)
                 || !has_enough_impulse
                 || !has_enough_food_to_sprint
-                || (movement_result.horizontal_collision() && !movement_result.minor_horizontal_collision())
+                || (movement_result.horizontal_collision()
+                    && !movement_result.minor_horizontal_collision())
                 || (is_in_water && !is_underwater);
             if should_stop_sprinting {
                 set_sprinting(false, &mut sprinting, &mut attributes);
@@ -497,7 +505,7 @@ fn can_start_fall_flying(
     abilities: &PlayerAbilities,
     inv: &Inventory,
     physics: &Physics,
-    ground_contact: &GroundContact
+    ground_contact: &GroundContact,
 ) -> bool {
     (!**already_fall_flying)
         && (!abilities.flying)

@@ -265,9 +265,7 @@ pub enum TravelCtx {
         y: f64,
         has_water_movement_speed: Option<f32>,
     },
-    FallFlying {
-        
-    }
+    FallFlying {},
 }
 
 impl Default for TravelCtx {

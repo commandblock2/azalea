@@ -11,8 +11,11 @@ use azalea_client::{
     mining::{Mining, MiningSystems, StartMiningBlockEvent},
 };
 use azalea_core::{position::BlockPos, tick::GameTick};
-use azalea_entity::{Attributes, GroundContact, LookDirection, MovementResult, Physics, Position, inventory::Inventory};
-use azalea_physics::{PhysicsSystems};
+use azalea_entity::{
+    Attributes, GroundContact, LookDirection, MovementResult, Physics, Position,
+    inventory::Inventory,
+};
+use azalea_physics::PhysicsSystems;
 use bevy_app::{App, Plugin};
 use bevy_ecs::{prelude::*, system::SystemState};
 use tracing::{debug, trace};
@@ -385,7 +388,7 @@ fn run_one_simulation(
             start,
             position,
             physics: &physics,
-            ground_contact
+            ground_contact,
         }) {
             success = true;
             total_ticks = ticks;
@@ -446,7 +449,14 @@ fn run_one_simulation(
             {
                 let mut system_state = SystemState::<(
                     Commands,
-                    Query<(&Position, &Physics, &GroundContact, Option<&Mining>, &Inventory, &MovementResult)>,
+                    Query<(
+                        &Position,
+                        &Physics,
+                        &GroundContact,
+                        Option<&Mining>,
+                        &Inventory,
+                        &MovementResult,
+                    )>,
                     MessageWriter<LookAtEvent>,
                     MessageWriter<StartSprintEvent>,
                     MessageWriter<StartWalkEvent>,
@@ -463,7 +473,8 @@ fn run_one_simulation(
                     mut start_mining_events,
                 ) = system_state.get_mut(sim.app.world_mut()).unwrap();
 
-                let (position, physics, ground_contact, mining, inventory, movement_result) = query.get(sim.entity).unwrap();
+                let (position, physics, ground_contact, mining, inventory, movement_result) =
+                    query.get(sim.entity).unwrap();
 
                 if movement_result.horizontal_collision() {
                     // if the simulated move made us hit a wall then it's bad
@@ -503,7 +514,7 @@ fn run_one_simulation(
                 start: simulating_to_block,
                 position: sim.position(),
                 physics: &sim.physics(),
-                ground_contact: &sim.ground_contact()
+                ground_contact: &sim.ground_contact(),
             }) {
                 followup_success = true;
                 break;

@@ -10,7 +10,8 @@ use azalea_core::{
     entity_id::MinecraftEntityId, game_type::GameMode, position::Vec3, tick::GameTick,
 };
 use azalea_entity::{
-    Attributes, GroundContact, LookDirection, MovementResult, Physics, Position, dimensions::EntityDimensions, inventory::Inventory
+    Attributes, GroundContact, LookDirection, MovementResult, Physics, Position,
+    dimensions::EntityDimensions, inventory::Inventory,
 };
 use azalea_registry::builtin::EntityKind;
 use azalea_world::{ChunkStorage, PartialWorld, World, WorldName, Worlds};
