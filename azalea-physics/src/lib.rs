@@ -261,10 +261,10 @@ pub fn apply_effects_from_blocks(
 
         if ground_contact.on_ground() {
             let block_pos = on_pos_legacy(&world.chunks, *position, ground_contact);
-            if let Some(state) = world.chunks.get_block_state(block_pos) {
-                if let Some(client_movement) = client_movement {
-                    handle_entity_step_on(state.as_block_kind(), client_movement, &mut physics);
-                }
+            if let Some(state) = world.chunks.get_block_state(block_pos)
+                && let Some(client_movement) = client_movement
+            {
+                handle_entity_step_on(state.as_block_kind(), client_movement, &mut physics);
             }
         }
 
@@ -290,6 +290,7 @@ pub fn apply_effects_from_blocks(
 
 /// Entity.restituteMovementAfterCollisions
 /// restitute is not as straight forward as bounce, right
+#[allow(clippy::type_complexity)]
 pub fn bounce_on_block(
     mut query: Query<
         (
@@ -323,7 +324,7 @@ pub fn bounce_on_block(
         let world = world_lock.read();
 
         let block_pos_below =
-            azalea_entity::on_pos_legacy(&world.chunks, *position, &ground_contact);
+            azalea_entity::on_pos_legacy(&world.chunks, *position, ground_contact);
         let block_state_below = world.get_block_state(block_pos_below).unwrap_or_default();
 
         let mut restitution = if client_movement.trying_to_crouch {
@@ -342,7 +343,7 @@ pub fn bounce_on_block(
 
         let velocity = if movement_result.vertical_collision() {
             if movement_result.vertical_collision_below() {
-                restitution = if !(-physics.velocity.y < get_effective_gravity())
+                restitution = if -physics.velocity.y >= get_effective_gravity()
                     && !client_movement.trying_to_crouch
                     && !SUPPRESSES_BOUNCE.contains(&block_state_below.as_block_kind())
                 {
@@ -365,7 +366,7 @@ pub fn bounce_on_block(
                     azalea_core::math::lerp(
                         portion_with_movement,
                         1.0,
-                        attributes.air_drag.calculate() as f64,
+                        attributes.air_drag.calculate(),
                     ),
                 )
             } else {
@@ -382,6 +383,7 @@ pub fn bounce_on_block(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn apply_speed_factor(
     mut query: Query<
         (&mut Physics, &Position, &GroundContact, &WorldName),
@@ -408,7 +410,7 @@ pub fn apply_speed_factor(
                     .get_block_state(get_block_pos_below_that_affects_movement(
                         &world.chunks,
                         *position,
-                        &ground_contact,
+                        ground_contact,
                     ))
                     .unwrap_or(BlockState::from(BlockKind::VoidAir))
                     .behavior()
@@ -425,6 +427,7 @@ pub fn apply_speed_factor(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_inside_blocks(
     physics: &mut Physics,
     stuck_speed_multipler: &mut StuckSpeedMultiplier,
@@ -533,6 +536,7 @@ fn collided_with_shape_moving_from(
 }
 
 // BlockBehavior.entityInside
+#[allow(clippy::too_many_arguments)]
 fn handle_entity_inside_block(
     precise: bool,
     world: &World,
@@ -637,17 +641,13 @@ fn handle_entity_step_on(
     client_movement: &ClientMovementState,
     physics: &mut Physics,
 ) {
-    match block {
-        BlockKind::SlimeBlock => {
-            let y_absolute = physics.velocity.y.abs();
-            if y_absolute > 0.1 && !client_movement.trying_to_crouch {
-                let scale = 0.4 + y_absolute * 0.2;
-                physics.velocity.x *= scale;
-                physics.velocity.z *= scale;
-            }
+    if BlockKind::SlimeBlock == block {
+        let y_absolute = physics.velocity.y.abs();
+        if y_absolute > 0.1 && !client_movement.trying_to_crouch {
+            let scale = 0.4 + y_absolute * 0.2;
+            physics.velocity.x *= scale;
+            physics.velocity.z *= scale;
         }
-
-        _ => {}
     }
 }
 
@@ -656,6 +656,7 @@ pub struct EntityMovement {
     pub to: Vec3,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn jump_from_ground(
     physics: &mut Physics,
     ground_contact: &GroundContact,
@@ -837,6 +838,7 @@ fn jump_boost_power(active_effects: &ActiveEffects) -> f32 {
         .unwrap_or(0.)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_falling_distance(
     mut query: Query<
         (&Position, &WorldName, &GroundContact, &mut Physics),
@@ -851,7 +853,7 @@ pub fn update_falling_distance(
         let world = world_lock.read();
 
         let block_pos_below =
-            azalea_entity::on_pos_legacy(&world.chunks, *position, &ground_contact);
+            azalea_entity::on_pos_legacy(&world.chunks, *position, ground_contact);
         let block_state_below = world.get_block_state(block_pos_below).unwrap_or_default();
 
         let old_position = physics.old_position;

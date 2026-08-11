@@ -105,7 +105,7 @@ pub fn tick_execute_path(
                 position: **position,
                 start: executing_path.last_reached_node,
                 physics,
-                ground_contact: ground_contact,
+                ground_contact,
                 is_currently_mining: mining.is_some(),
                 can_mine: true,
                 world: world_holder.shared.clone(),

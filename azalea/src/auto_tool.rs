@@ -112,7 +112,7 @@ pub fn accurate_best_tool_in_hotbar_for_block(
                 if !item_stack.component_patch.has::<components::Damage>() {
                     this_item_speed = Some(azalea_entity::mining::get_mine_progress(
                         block,
-                        &item_stack_data,
+                        item_stack_data,
                         fluid_on_eyes,
                         ground_contact,
                         attributes,

@@ -325,14 +325,14 @@ pub fn on_pos(
     ground_contact: &GroundContact,
 ) -> BlockPos {
     if let Some(main_supporting_block) = ground_contact.supporting_block {
-        if !(offset > 1e-5f32) {
+        if offset <= 1e-5f32 {
             main_supporting_block
         } else {
             let block_state_below = chunk_storage
                 .get_block_state(main_supporting_block)
                 .unwrap_or(BlockState::from(BlockKind::VoidAir));
             let block_kind_below = block_state_below.as_block_kind();
-            if (!(offset <= 0.5) || !FENCES.contains(&block_kind_below))
+            if (offset > 0.5 || !FENCES.contains(&block_kind_below))
                 && !WALLS.contains(&block_kind_below)
                 && !(FENCE_GATES.contains(&block_kind_below))
             // For fence gates, vanilla uses `instanceof` to understand if it is one. The difference

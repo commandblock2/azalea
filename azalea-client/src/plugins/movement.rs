@@ -445,6 +445,7 @@ pub fn local_player_ai_step(
 // 1. adds too much new query parameters if not extracted
 // 2. is very local to interact with the elytra shared flag
 // therefore I think it's safe to isolate into a separate system
+#[allow(clippy::type_complexity)]
 pub fn process_fall_flying_activation(
     mut query: Query<
         (
@@ -709,6 +710,7 @@ pub fn handle_knockback(knockback: On<KnockbackEvent>, mut query: Query<&mut Phy
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_pose(
     mut query: Query<(
         Entity,

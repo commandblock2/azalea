@@ -127,6 +127,7 @@ pub fn travel_until_moved(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn travel_post_move(
     mut query: Query<
         (

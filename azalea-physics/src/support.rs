@@ -29,6 +29,8 @@ pub fn clear_server_update_flag(
     }
 }
 
+
+#[allow(clippy::type_complexity)]
 pub fn update_main_supporting_block_pos_from_server(
     mut query: Query<
         (
@@ -64,6 +66,7 @@ pub fn update_main_supporting_block_pos_from_server(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_main_supporting_block_pos_local(
     mut query: Query<
         (
@@ -89,7 +92,7 @@ pub fn update_main_supporting_block_pos_local(
             position,
             &world,
             movement_result,
-            &physics,
+            physics,
             &mut ground_contact,
         );
     }
@@ -113,7 +116,7 @@ fn update_main_supporting_block_pos(
     let test_box = {
         let mut box_ = physics.bounding_box;
         box_.max.y = box_.min.y;
-        box_.min.y = box_.min.y - 1e-6;
+        box_.min.y -= - 1e-6;
         box_
     }; // small volume under player foot
 
@@ -134,7 +137,7 @@ fn update_main_supporting_block_pos(
             z: -movement.z,
         });
         find_supporting_block(
-            &world,
+            world,
             fallback_testbox,
             **position,
             EntityCollisionContext::of(Some(entity)),
