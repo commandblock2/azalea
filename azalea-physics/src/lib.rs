@@ -338,11 +338,11 @@ pub fn bounce_on_block(
             velocity = velocity.with_z(-physics.velocity.z * restitution);
         }
 
-        if movement_result.vertical_collision() {
+        let velocity = if movement_result.vertical_collision() {
             if movement_result.vertical_collision_below() {
                 restitution = if !(-physics.velocity.y < get_effective_gravity())
                     && !client_movement.trying_to_crouch
-                    && SUPPRESSES_BOUNCE.contains(&block_state_below.as_block_kind())
+                    && !SUPPRESSES_BOUNCE.contains(&block_state_below.as_block_kind())
                 {
                     let bounciness = block_state_below.as_block_state().behavior().bounciness;
                     restitution.max(if living.is_some() {
@@ -370,9 +370,13 @@ pub fn bounce_on_block(
                 (0.0, 1.0)
             };
 
-            physics.velocity = velocity
-                .with_y((gravity_compensation - physics.velocity.y) * effective_drag * restitution);
-        }
+            velocity
+                .with_y((gravity_compensation - physics.velocity.y) * effective_drag * restitution)
+        } else {
+            velocity
+        };
+
+        physics.velocity = velocity;
     }
 }
 

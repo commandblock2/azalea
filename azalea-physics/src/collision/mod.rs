@@ -210,13 +210,6 @@ pub fn move_colliding(ctx: &mut MoveCtx, mut movement: Vec3) {
             },
         }
     }
-
-    if ctx.movement_result.vertical_collision() {
-        // blockBelow.updateEntityAfterFallOn(this.level, this);
-        // the default implementation of updateEntityAfterFallOn sets the y movement to
-        // 0
-        physics.velocity.y = 0.;
-    }
 }
 
 fn maybe_back_off_from_edge(move_ctx: &mut MoveCtx, mut movement: Vec3) -> Vec3 {
