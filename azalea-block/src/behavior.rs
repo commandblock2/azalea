@@ -40,6 +40,11 @@ impl BlockBehavior {
         self
     }
 
+    pub fn bounciness(mut self, bounciness: f32) -> Self {
+        self.bounciness = bounciness;
+        self
+    }
+
     pub fn speed_factor(mut self, speed_factor: f32) -> Self {
         self.speed_factor = speed_factor;
         self

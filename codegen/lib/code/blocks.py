@@ -148,6 +148,11 @@ def generate_blocks(
         if jump_factor and jump_factor != 1:
             behavior_constructor += f".jump_factor({jump_factor})"
 
+        
+        bounce_restitution = block_data_pumpkin.get("bounce_restitution")
+        if bounce_restitution:
+            behavior_constructor += f".bounciness({bounce_restitution})"
+
         speed_factor = block_data_pumpkin.get("velocity_multiplier")
         if speed_factor and speed_factor != 1:
             behavior_constructor += f".speed_factor({speed_factor})"

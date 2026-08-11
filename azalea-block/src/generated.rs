@@ -1222,82 +1222,82 @@ make_block_states! {
             "note": Note::_0,
             "powered": Powered(false),
         },
-        white_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        white_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        orange_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        orange_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        magenta_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        magenta_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        light_blue_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        light_blue_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        yellow_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        yellow_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        lime_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        lime_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        pink_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        pink_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        gray_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        gray_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        light_gray_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        light_gray_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        cyan_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        cyan_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        purple_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        purple_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        blue_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        blue_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        brown_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        brown_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        green_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        green_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        red_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        red_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
         },
-        black_bed => BlockBehavior::new().strength(0.2, 0.2), {
+        black_bed => BlockBehavior::new().strength(0.2, 0.2).bounciness(0.75), {
             "facing": FacingCardinal::North,
             "occupied": Occupied(false),
             "part": Part::Foot,
@@ -2639,7 +2639,7 @@ make_block_states! {
             "shape": StairShape::Straight,
             "waterlogged": Waterlogged(false),
         },
-        slime_block => BlockBehavior::new().friction(0.8), {},
+        slime_block => BlockBehavior::new().friction(0.8).bounciness(1.0), {},
         barrier => BlockBehavior::new().strength(-1.0, 3600000.8), {
             "waterlogged": Waterlogged(false),
         },
