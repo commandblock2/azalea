@@ -68,12 +68,12 @@ impl Plugin for PhysicsPlugin {
                     update_main_supporting_block_pos_local.after(EntityGeometryUpdateSystems),
                     update_falling_distance,
                     bounce_on_block,
-                    apply_effects_from_blocks,
                     apply_speed_factor,
                     travel_post_move,
                 )
                     .chain()
                     .in_set(TravelSystems),
+                apply_effects_from_blocks,
             )
                 .chain()
                 .in_set(PhysicsSystems)
