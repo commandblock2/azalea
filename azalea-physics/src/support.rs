@@ -106,6 +106,7 @@ fn update_main_supporting_block_pos(
 ) {
     if !ground_contact.on_ground() {
         ground_contact.on_ground_no_support = false;
+        ground_contact.supporting_block = None;
         return;
     }
 
