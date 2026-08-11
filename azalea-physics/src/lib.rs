@@ -279,6 +279,8 @@ pub fn apply_effects_from_blocks(
             &mut physics,
             &mut stuck_speed_multiplier,
             effects,
+            ground_contact,
+            position,
             dimensions,
             &world,
             &movement_this_tick,
@@ -427,6 +429,8 @@ fn check_inside_blocks(
     physics: &mut Physics,
     stuck_speed_multipler: &mut StuckSpeedMultiplier,
     effect: &ActiveEffects,
+    ground_contact: &GroundContact,
+    position: &Position,
     dimensions: &EntityDimensions,
     world: &World,
     movements: &[EntityMovement],
@@ -485,6 +489,9 @@ fn check_inside_blocks(
                 traversed_block_state,
                 effect,
                 traversed_block,
+                ground_contact,
+                position,
+                dimensions,
                 stuck_speed_multipler,
                 physics,
             );
@@ -519,6 +526,9 @@ fn handle_entity_inside_block(
     block: BlockState,
     effect: &ActiveEffects,
     block_pos: BlockPos,
+    ground_contact: &GroundContact,
+    position: &Position,
+    dimensions: &EntityDimensions,
     stuck_speed_multipler: &mut StuckSpeedMultiplier,
     physics: &mut Physics,
 ) {
@@ -573,6 +583,30 @@ fn handle_entity_inside_block(
                 z: 0.8f32 as f64,
             }
         }
+        BlockKind::HoneyBlock => {
+            let dx = (block_pos.x as f64 + 0.5 - position.x).abs();
+            let dz = (block_pos.z as f64 + 0.5 - position.z).abs();
+            let overlapping_dist = 0.4375f64 + (dimensions.width / 2.0f32) as f64;
+
+            let old_velocity_y = physics.velocity.y / 0.98f32 as f64 + 0.08;
+            const NEW_VELOCITY_Y: f64 = (-0.05f64 - 0.08) * 0.98f32 as f64;
+
+            let is_sliding_down = !ground_contact.on_ground()
+                && position.y <= block_pos.y as f64 + 0.9375 - 1.0e-7
+                && old_velocity_y < -0.08
+                && (dx + 1.0e-7 > overlapping_dist || dz + 1.0e-7 > overlapping_dist);
+
+            if is_sliding_down {
+                if old_velocity_y < -0.13 {
+                    let reduction_factor_horizontal = -0.05 / old_velocity_y;
+                    physics.velocity.x *= reduction_factor_horizontal;
+                    physics.velocity.y = NEW_VELOCITY_Y;
+                    physics.velocity.z *= reduction_factor_horizontal;
+                } else {
+                    physics.velocity.y = NEW_VELOCITY_Y;
+                }
+            }
+        }
         _ => {}
     }
 }
@@ -597,6 +631,7 @@ fn handle_entity_step_on(
         _ => {}
     }
 }
+
 pub struct EntityMovement {
     pub from: Vec3,
     pub to: Vec3,
