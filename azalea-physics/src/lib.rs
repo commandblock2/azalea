@@ -573,13 +573,6 @@ fn handle_entity_inside_block(
                 z: 0.8f32 as f64,
             }
         }
-        BlockKind::PowderSnow => {
-            stuck_speed_multipler.modifier = Vec3 {
-                x: 0.9f32 as f64,
-                y: 1.5,
-                z: 0.9f32 as f64,
-            }
-        }
         _ => {}
     }
 }
