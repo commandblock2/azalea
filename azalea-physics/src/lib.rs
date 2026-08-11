@@ -18,11 +18,16 @@ use azalea_core::{
 };
 use azalea_entity::{
     ActiveEffects, Attributes, EntityGeometryUpdateSystems, EntityKindComponent, GroundContact,
-    HasClientLoaded, Jumping, LocalEntity, LookDirection, OnClimbable, Physics, Pose, Position,
-    StuckSpeedMultiplier, dimensions::EntityDimensions, metadata::Sprinting, move_relative, on_pos,
-    on_pos_legacy,
+    HasClientLoaded, Jumping, LocalEntity, LookDirection, MovementResult, OnClimbable, Physics,
+    Pose, Position, StuckSpeedMultiplier,
+    dimensions::EntityDimensions,
+    metadata::{AbstractLiving, Sprinting},
+    move_relative, on_pos, on_pos_legacy,
 };
-use azalea_registry::builtin::{BlockKind, EntityKind, MobEffect};
+use azalea_registry::{
+    builtin::{BlockKind, EntityKind, MobEffect},
+    tags::blocks::SUPPRESSES_BOUNCE,
+};
 use azalea_world::{ChunkStorage, World, WorldName, Worlds};
 use bevy_app::{App, Plugin, Update};
 use bevy_ecs::prelude::*;
@@ -36,7 +41,7 @@ use crate::{
         clear_server_update_flag, update_main_supporting_block_pos_from_server,
         update_main_supporting_block_pos_local,
     },
-    travel::travel_post_move,
+    travel::{get_effective_gravity, travel_post_move},
 };
 
 /// A Bevy [`SystemSet`] for running physics that makes entities do things.
@@ -62,6 +67,7 @@ impl Plugin for PhysicsPlugin {
                     travel::travel_until_moved.before(EntityGeometryUpdateSystems),
                     update_main_supporting_block_pos_local.after(EntityGeometryUpdateSystems),
                     update_falling_distance,
+                    bounce_on_block,
                     apply_effects_from_blocks,
                     apply_speed_factor,
                     travel_post_move,
@@ -277,6 +283,96 @@ pub fn apply_effects_from_blocks(
             &world,
             &movement_this_tick,
         );
+    }
+}
+
+/// Entity.restituteMovementAfterCollisions
+/// restitute is not as straight forward as bounce, right
+pub fn bounce_on_block(
+    mut query: Query<
+        (
+            &MovementResult,
+            &ClientMovementState,
+            &Attributes,
+            &Position,
+            &GroundContact,
+            &WorldName,
+            Option<&AbstractLiving>,
+            &mut Physics,
+        ),
+        (With<LocalEntity>, With<HasClientLoaded>),
+    >,
+    worlds: Res<Worlds>,
+) {
+    for (
+        movement_result,
+        client_movement,
+        attributes,
+        position,
+        ground_contact,
+        world_name,
+        living,
+        mut physics,
+    ) in &mut query
+    {
+        let Some(world_lock) = worlds.get(world_name) else {
+            continue;
+        };
+        let world = world_lock.read();
+
+        let block_pos_below =
+            azalea_entity::on_pos_legacy(&world.chunks, *position, &ground_contact);
+        let block_state_below = world.get_block_state(block_pos_below).unwrap_or_default();
+
+        let mut restitution = if client_movement.trying_to_crouch {
+            0.0
+        } else {
+            attributes.bounciness.calculate()
+        };
+        let mut velocity = physics.velocity;
+        if movement_result.x_collision() {
+            velocity = velocity.with_x(-physics.velocity.x * restitution);
+        }
+
+        if movement_result.z_collision() {
+            velocity = velocity.with_z(-physics.velocity.z * restitution);
+        }
+
+        if movement_result.vertical_collision() {
+            if movement_result.vertical_collision_below() {
+                restitution = if !(-physics.velocity.y < get_effective_gravity())
+                    && !client_movement.trying_to_crouch
+                    && SUPPRESSES_BOUNCE.contains(&block_state_below.as_block_kind())
+                {
+                    let bounciness = block_state_below.as_block_state().behavior().bounciness;
+                    restitution.max(if living.is_some() {
+                        bounciness as f64
+                    } else {
+                        (bounciness * 0.8f32) as f64
+                    })
+                } else {
+                    0.0
+                };
+            }
+
+            let (gravity_compensation, effective_drag) = if restitution > 0.0 {
+                let portion_with_movement = movement_result.actual.y / physics.velocity.y;
+
+                (
+                    portion_with_movement * get_effective_gravity(),
+                    azalea_core::math::lerp(
+                        portion_with_movement,
+                        1.0,
+                        attributes.air_drag.calculate() as f64,
+                    ),
+                )
+            } else {
+                (0.0, 1.0)
+            };
+
+            physics.velocity = velocity
+                .with_y((gravity_compensation - physics.velocity.y) * effective_drag * restitution);
+        }
     }
 }
 

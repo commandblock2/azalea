@@ -523,7 +523,7 @@ fn contains_any_liquid(world: &World, bounding_box: Aabb) -> bool {
     false
 }
 
-fn get_effective_gravity() -> f64 {
+pub fn get_effective_gravity() -> f64 {
     // TODO: slow falling effect
     0.08
 }
