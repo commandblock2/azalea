@@ -116,7 +116,7 @@ fn update_main_supporting_block_pos(
     let test_box = {
         let mut box_ = physics.bounding_box;
         box_.max.y = box_.min.y;
-        box_.min.y -= - 1e-6;
+        box_.min.y -= 1e-6;
         box_
     }; // small volume under player foot
 
