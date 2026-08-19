@@ -6,7 +6,10 @@ use azalea_core::{
     direction::Direction,
     position::{BlockPos, Vec3},
 };
-use azalea_entity::{HasClientLoaded, LocalEntity, Physics, Position};
+use azalea_entity::{
+    FluidOnEyes, HasClientLoaded, LocalEntity, Physics, PlayerAbilities, Position,
+    metadata::{Sprinting, Swimming},
+};
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{World, WorldName, Worlds};
 use bevy_ecs::prelude::*;
@@ -175,8 +178,47 @@ fn update_fluid_height_and_do_fluid_pushing(
     touching_fluid
 }
 
-pub fn update_swimming() {
-    // TODO: swimming
+pub fn update_swimming(
+    mut query: Query<
+        (
+            &mut Swimming,
+            Option<&PlayerAbilities>,
+            &Sprinting,
+            &Physics,
+            &FluidOnEyes,
+            &Position,
+            &WorldName,
+        ),
+        (With<LocalEntity>, With<HasClientLoaded>),
+    >,
+    worlds: Res<Worlds>,
+) {
+    for (mut swimming, abilities, sprinting, physics, fluid_on_eyes, position, world_name) in
+        &mut query
+    {
+        let Some(world_lock) = worlds.get(world_name) else {
+            continue;
+        };
+
+        let world = world_lock.read();
+
+        let is_passenger = false;
+
+        let keep_swiming = **sprinting
+            && physics.is_in_water()
+            && !is_passenger
+            && abilities.is_none_or(|cap| cap.flying);
+
+        if **swimming {
+            **swimming = keep_swiming;
+        } else {
+            **swimming = keep_swiming
+                && **fluid_on_eyes == FluidKind::Water
+                && world
+                    .get_fluid_state(position.into())
+                    .is_some_and(|f| f.kind == FluidKind::Water);
+        }
+    }
 }
 
 // FlowingFluid.getFlow

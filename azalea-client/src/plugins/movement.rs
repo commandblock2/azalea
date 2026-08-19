@@ -1,3 +1,4 @@
+use azalea_block::fluid_state::FluidKind;
 use azalea_core::{
     entity_id::MinecraftEntityId,
     game_type::GameMode,
@@ -5,11 +6,12 @@ use azalea_core::{
     tick::GameTick,
 };
 use azalea_entity::{
-    Attributes, Crouching, GroundContact, HasClientLoaded, Jumping, LastSentPosition, LocalEntity,
-    LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose, Position,
+    Attributes, Crouching, FluidOnEyes, GroundContact, HasClientLoaded, Jumping, LastSentPosition,
+    LocalEntity, LookDirection, MovementResult, OnClimbable, Physics, PlayerAbilities, Pose,
+    Position,
     dimensions::calculate_dimensions,
     inventory::Inventory,
-    metadata::{self, FallFlying, Sprinting},
+    metadata::{self, FallFlying, Sprinting, Swimming},
     update_bounding_box, update_dimensions,
 };
 use azalea_inventory::components::{self, EquipmentSlot};
@@ -311,6 +313,8 @@ pub fn local_player_ai_step(
                 &Position,
                 Option<&Hunger>,
                 Option<&LastSentInput>,
+                &GroundContact,
+                &FluidOnEyes,
                 &FallFlying,
                 &Pose,
                 &MovementResult,
@@ -338,6 +342,8 @@ pub fn local_player_ai_step(
             position,
             hunger,
             last_sent_input,
+            ground_contact,
+            fluid_on_eyes,
             fall_flying,
             pose,
             movement_result,
@@ -382,9 +388,9 @@ pub fn local_player_ai_step(
 
         let trying_to_sprint = physics_state.trying_to_sprint;
 
-        // TODO: swimming
-        let is_underwater = false;
         let is_in_water = physics.is_in_water();
+        let is_underwater = is_in_water && **fluid_on_eyes == FluidKind::Water;
+        let is_in_shallow_water = is_in_water && !is_underwater;
 
         let is_fall_flying = **fall_flying;
         // TODO: passenger
@@ -396,10 +402,20 @@ pub fn local_player_ai_step(
 
         let has_enough_impulse = has_enough_impulse_to_start_sprinting(physics_state);
 
+        let is_sprinting_possible = |allowed_in_shallow: bool| {
+            let vehicle_can_sprint = false;
+            let possible = if is_passenger {
+                vehicle_can_sprint
+            } else {
+                has_enough_food_to_sprint
+            };
+            possible && (allowed_in_shallow || is_in_shallow_water)
+        };
+
         // LocalPlayer.canStartSprinting
         let can_start_sprinting = !**sprinting
             && has_enough_impulse
-            && has_enough_food_to_sprint
+            && is_sprinting_possible(abilities.flying)
             && !using_item
             && !has_blindness
             && (!is_passenger || is_underwater)
@@ -411,17 +427,23 @@ pub fn local_player_ai_step(
         }
 
         if **sprinting {
-            // TODO: swimming
+            let should_stop_sprinting = if **swimming {
+                !is_sprinting_possible(true)
+                    || !is_in_water
+                    || !has_enough_impulse
+                        && !ground_contact.on_ground
+                        && physics_state.trying_to_crouch
+            } else {
+                // shouldStopRunSprinting
+                has_blindness
+                    || !has_enough_impulse
+                    || !is_sprinting_possible(abilities.flying)
+                    || !has_enough_food_to_sprint
+                    || (movement_result.horizontal_collision()
+                        && !movement_result.minor_horizontal_collision())
+                    || (is_in_water && !is_underwater)
+            };
 
-            let vehicle_can_sprint = false;
-            // shouldStopRunSprinting
-            let should_stop_sprinting = has_blindness
-                || (is_passenger && !vehicle_can_sprint)
-                || !has_enough_impulse
-                || !has_enough_food_to_sprint
-                || (movement_result.horizontal_collision()
-                    && !movement_result.minor_horizontal_collision())
-                || (is_in_water && !is_underwater);
             if should_stop_sprinting {
                 set_sprinting(false, &mut sprinting, &mut attributes);
             }
@@ -673,11 +695,7 @@ fn set_sprinting(
 
 // Whether the player is moving fast enough to be able to start sprinting.
 fn has_enough_impulse_to_start_sprinting(physics_state: &ClientMovementState) -> bool {
-    // if self.underwater() {
-    //     self.has_forward_impulse()
-    // } else {
-    physics_state.move_vector.y > 0.8
-    // }
+    physics_state.move_vector.y > 1e-5f32
 }
 
 /// An event sent by the server that sets or adds to our velocity.
@@ -718,6 +736,7 @@ pub fn update_pose(
         &Physics,
         &ClientMovementState,
         &FallFlying,
+        &Swimming,
         &GameMode,
         &WorldHolder,
         &Position,
@@ -731,6 +750,7 @@ pub fn update_pose(
         physics,
         physics_state,
         fall_flying,
+        swimming,
         &game_mode,
         world_holder,
         position,
@@ -753,7 +773,9 @@ pub fn update_pose(
 
         // TODO: implement everything else from getDesiredPose: sleeping, swimming,
         // fallFlying, spinAttack
-        let desired_pose = if physics_state.trying_to_crouch {
+        let desired_pose = if **swimming {
+            Pose::Swimming
+        } else if physics_state.trying_to_crouch {
             Pose::Crouching
         } else if **fall_flying {
             Pose::FallFlying
