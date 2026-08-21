@@ -60,8 +60,8 @@ impl Plugin for PhysicsPlugin {
             GameTick,
             (
                 fluids::update_in_water_state_and_do_fluid_pushing,
-                update_old_position,
                 fluids::update_swimming,
+                update_old_position,
                 ai_step,
                 (
                     travel::travel_until_moved.before(EntityGeometryUpdateSystems),

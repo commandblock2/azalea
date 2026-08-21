@@ -16,10 +16,7 @@ use azalea_entity::{
 };
 use azalea_inventory::components::{self, EquipmentSlot};
 use azalea_physics::{
-    PhysicsSystems, TravelSystems, ai_step,
-    client_movement::{ClientMovementState, SprintDirection, WalkDirection},
-    collision::entity_collisions::{AabbQuery, CollidableEntityQuery, update_last_bounding_box},
-    travel::no_collision,
+    PhysicsSystems, TravelSystems, ai_step, client_movement::{ClientMovementState, SprintDirection, WalkDirection}, collision::entity_collisions::{AabbQuery, CollidableEntityQuery, update_last_bounding_box}, travel::no_collision
 };
 use azalea_protocol::{
     common::movements::MoveFlags,
@@ -70,6 +67,8 @@ impl Plugin for MovementPlugin {
                         .in_set(PhysicsSystems)
                         .before(ai_step)
                         .before(azalea_physics::fluids::update_in_water_state_and_do_fluid_pushing),
+                    
+                    // rest of LocalPlayer.tick(), returned from Player.tick()
                     send_player_input_packet,
                     update_pose.after(TravelSystems),
                     update_dimensions,
@@ -409,7 +408,7 @@ pub fn local_player_ai_step(
             } else {
                 has_enough_food_to_sprint
             };
-            possible && (allowed_in_shallow || is_in_shallow_water)
+            !has_blindness && possible && (allowed_in_shallow || !is_in_shallow_water)
         };
 
         // LocalPlayer.canStartSprinting
@@ -417,7 +416,6 @@ pub fn local_player_ai_step(
             && has_enough_impulse
             && is_sprinting_possible(abilities.flying)
             && !using_item
-            && !has_blindness
             && (!is_passenger || is_underwater)
             && (!is_fall_flying || is_underwater)
             && (!is_moving_slowly(&crouching, fall_flying, pose, is_in_water) || is_underwater)
