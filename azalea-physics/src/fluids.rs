@@ -8,7 +8,7 @@ use azalea_core::{
 };
 use azalea_entity::{
     FluidOnEyes, HasClientLoaded, LocalEntity, Physics, PlayerAbilities, Position,
-    metadata::{Sprinting, Swimming},
+    metadata::{AbstractLiving, Sprinting, Swimming},
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{World, WorldName, Worlds};
@@ -16,15 +16,33 @@ use bevy_ecs::prelude::*;
 
 use crate::collision::legacy_blocks_motion;
 
+#[derive(Debug, PartialEq)]
+pub enum FluidUpdateTiming {
+    NormalFluidUpdate,
+    PostMovementUpdate,
+}
+
+/// System for running fluid physics (most of the physics anyway)
+#[derive(Clone, Debug, Eq, Hash, PartialEq, SystemSet)]
+pub struct FluidTickSystems;
+
 #[allow(clippy::type_complexity)]
 pub fn update_in_water_state_and_do_fluid_pushing(
+    input: InMut<FluidUpdateTiming>,
     mut query: Query<
-        (&mut Physics, &Position, &WorldName),
+        (&mut Physics, &Position, &WorldName, Option<&AbstractLiving>),
         (With<LocalEntity>, With<HasClientLoaded>),
     >,
     worlds: Res<Worlds>,
 ) {
-    for (mut physics, position, world_name) in &mut query {
+    for (mut physics, position, world_name, living) in &mut query {
+        if *input.0 == FluidUpdateTiming::PostMovementUpdate
+            && (physics.was_touching_water || living.is_none())
+        // only LivingEntity has this override
+        {
+            continue;
+        }
+
         let Some(world_lock) = worlds.get(world_name) else {
             continue;
         };

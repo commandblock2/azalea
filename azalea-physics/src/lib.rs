@@ -37,6 +37,7 @@ use collision::{BLOCK_SHAPE, BlockWithShape, VoxelShape, move_colliding};
 use crate::{
     client_movement::ClientMovementState,
     collision::{MoveCtx, entity_collisions::update_last_bounding_box},
+    fluids::{FluidTickSystems, update_in_water_state_and_do_fluid_pushing},
     support::{
         clear_server_update_flag, update_main_supporting_block_pos_from_server,
         update_main_supporting_block_pos_local,
@@ -59,13 +60,20 @@ impl Plugin for PhysicsPlugin {
         app.add_systems(
             GameTick,
             (
-                fluids::update_in_water_state_and_do_fluid_pushing,
-                fluids::update_swimming,
+                (
+                    update_in_water_state_and_do_fluid_pushing
+                        .with_input(fluids::FluidUpdateTiming::NormalFluidUpdate),
+                    fluids::update_swimming,
+                )
+                    .chain()
+                    .in_set(FluidTickSystems),
                 update_old_position,
                 ai_step,
                 (
                     travel::travel_until_moved.before(EntityGeometryUpdateSystems),
                     update_main_supporting_block_pos_local.after(EntityGeometryUpdateSystems),
+                    update_in_water_state_and_do_fluid_pushing
+                        .with_input(fluids::FluidUpdateTiming::PostMovementUpdate),
                     update_falling_distance,
                     bounce_on_block,
                     apply_speed_factor,
