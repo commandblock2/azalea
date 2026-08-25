@@ -1,5 +1,5 @@
 [build]
-rustflags = ["--cfg", "docsrs_dep"]
+rustflags = ["--cfg", "docsrs_dep", "-Znext-solver=coherence"]
 rustdocflags = [
     "--html-after-content",
     "docs-rs/trait-tags.html",
