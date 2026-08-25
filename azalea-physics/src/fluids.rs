@@ -7,14 +7,58 @@ use azalea_core::{
     position::{BlockPos, Vec3},
 };
 use azalea_entity::{
-    FluidOnEyes, HasClientLoaded, LocalEntity, Physics, PlayerAbilities, Position,
-    metadata::{AbstractLiving, Sprinting, Swimming},
+    FluidOnEyes, HasClientLoaded, Jumping, LocalEntity, LookDirection, Physics, PlayerAbilities,
+    Position,
+    metadata::{AbstractLiving, Player, Sprinting, Swimming},
+    view_vector,
 };
 use azalea_registry::builtin::BlockKind;
 use azalea_world::{World, WorldName, Worlds};
 use bevy_ecs::prelude::*;
 
 use crate::collision::legacy_blocks_motion;
+
+pub fn update_vertical_momentum_swimming(
+    mut query: Query<
+        (
+            &mut Physics,
+            &LookDirection,
+            &Jumping,
+            &Position,
+            &Swimming,
+            &WorldName,
+        ),
+        (With<LocalEntity>, With<HasClientLoaded>, With<Player>),
+    >,
+    worlds: Res<Worlds>,
+) {
+    for (mut physics, look, jumping, position, swimming, world_name) in &mut query {
+        if !**swimming {
+            continue;
+        }
+        
+        let Some(world_lock) = worlds.get(world_name) else {
+            continue;
+        };
+        let world = world_lock.read();
+
+        let angle_y = view_vector(*look).y;
+        let multiplier = if angle_y < -0.2 { 0.085 } else { 0.06 };
+        if angle_y <= 0.0
+            || **jumping
+            || world
+                .get_fluid_state(position.up(1.0 - 0.1).to_block_pos_floor())
+                .is_some()
+        {
+            let y_velocity = physics.velocity.y;
+            physics.velocity += Vec3 {
+                x: 0.0,
+                y: (angle_y - y_velocity) * multiplier,
+                z: 0.0,
+            }
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum FluidUpdateTiming {
@@ -237,7 +281,7 @@ pub fn update_swimming(
         let keep_swiming = **sprinting
             && physics.is_in_water()
             && !is_passenger
-            && abilities.is_none_or(|cap| cap.flying);
+            && abilities.is_none_or(|cap| !cap.flying);
 
         if **swimming {
             **swimming = keep_swiming;
