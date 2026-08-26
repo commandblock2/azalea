@@ -55,7 +55,8 @@ fn xz_heuristic(dx: f32, dz: f32) -> f32 {
     let x = dx.abs();
     let z = dz.abs();
 
-    let (straight, diagonal) = if x < z { (z - x, x) } else { (x - z, z) };
+    // Swap `x` and `z` depending on the size.
+    let (diagonal, straight) = if x < z { (x, z - x) } else { (z, x - z) };
 
     (diagonal * SQRT_2 + straight) * COST_HEURISTIC
 }
