@@ -5,6 +5,7 @@ mod mergers;
 mod shape;
 mod shape_offset;
 pub mod world_collisions;
+pub mod support_type;
 
 use std::{ops::Add, sync::LazyLock};
 

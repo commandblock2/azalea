@@ -88,20 +88,37 @@ impl From<BlockState> for FluidState {
                 let level = state
                     .property::<crate::properties::WaterLevel>()
                     .expect("water block should always have WaterLevel");
-                return Self {
-                    kind: FluidKind::Water,
-                    amount: to_or_from_legacy_fluid_level(level as u8),
-                    falling: false,
+
+                return if level as u8 == 8 {
+                    Self {
+                        kind: FluidKind::Water,
+                        amount: 8,
+                        falling: true,
+                    }
+                } else {
+                    Self {
+                        kind: FluidKind::Water,
+                        amount: to_or_from_legacy_fluid_level(level as u8),
+                        falling: false,
+                    }
                 };
             }
             BlockKind::Lava => {
                 let level = state
                     .property::<crate::properties::LavaLevel>()
                     .expect("lava block should always have LavaLevel");
-                return Self {
-                    kind: FluidKind::Lava,
-                    amount: to_or_from_legacy_fluid_level(level as u8),
-                    falling: false,
+                return if level as u8 == 8 {
+                    Self {
+                        kind: FluidKind::Lava,
+                        amount: 8,
+                        falling: true,
+                    }
+                } else {
+                    Self {
+                        kind: FluidKind::Lava,
+                        amount: to_or_from_legacy_fluid_level(level as u8),
+                        falling: false,
+                    }
                 };
             }
             BlockKind::BubbleColumn

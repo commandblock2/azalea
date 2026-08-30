@@ -565,6 +565,57 @@ impl VoxelShape {
             max: Vec3::new(self.max(Axis::X), self.max(Axis::Y), self.max(Axis::Z)),
         }
     }
+
+    fn spans_full_axis(&self, axis: Axis) -> bool {
+        let coords = self.get_coords(axis);
+        let Some(first) = coords.first() else {
+            return false;
+        };
+        let Some(last) = coords.last() else {
+            return false;
+        };
+
+        first.abs() <= EPSILON && (1.0 - last).abs() <= EPSILON
+    }
+
+    pub fn is_surface_full(&self, direction: Direction) -> bool {
+        let (axis, positive, surface) = match direction {
+            Direction::Down => (Axis::Y, false, (Axis::X, Axis::Z)),
+            Direction::Up => (Axis::Y, true, (Axis::X, Axis::Z)),
+            Direction::North => (Axis::Z, false, (Axis::X, Axis::Y)),
+            Direction::South => (Axis::Z, true, (Axis::X, Axis::Y)),
+            Direction::West => (Axis::X, false, (Axis::Y, Axis::Z)),
+            Direction::East => (Axis::X, true, (Axis::Y, Axis::Z)),
+        };
+
+        let sample = if positive { 1.0 - EPSILON } else { EPSILON };
+
+        let layer = self.find_index(axis, sample); // selecting top layer
+
+        if layer < 0 || layer >= self.shape().size(axis) as i32 {
+            return false;
+        }
+
+        if self.spans_full_axis(surface.0) && self.spans_full_axis(surface.1) {
+            for u in 0..self.shape().size(surface.0) {
+                for v in 0..self.shape().size(surface.1) {
+                    let full = match axis {
+                        Axis::X => self.shape().is_full(layer as u32, u, v),
+                        Axis::Y => self.shape().is_full(u, layer as u32, v),
+                        Axis::Z => self.shape().is_full(u, v, layer as u32),
+                    };
+
+                    if !full {
+                        return false;
+                    }
+                }
+            }
+
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl From<&Aabb> for VoxelShape {

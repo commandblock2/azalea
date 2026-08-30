@@ -1,7 +1,4 @@
-use azalea_block::{
-    BlockState,
-    fluid_state::{FluidKind, FluidState},
-};
+use azalea_block::fluid_state::{FluidKind, FluidState};
 use azalea_core::{
     direction::Direction,
     position::{BlockPos, Vec3},
@@ -16,7 +13,7 @@ use azalea_registry::builtin::BlockKind;
 use azalea_world::{World, WorldName, Worlds};
 use bevy_ecs::prelude::*;
 
-use crate::collision::legacy_blocks_motion;
+use crate::collision::{legacy_blocks_motion, support_type::SupportType};
 
 pub fn update_vertical_momentum_swimming(
     mut query: Query<
@@ -380,21 +377,6 @@ fn is_solid_face(
     ) {
         return false;
     }
-    is_face_sturdy(block_state, world, adjacent_pos, direction)
-}
-
-fn is_face_sturdy(
-    _block_state: BlockState,
-    _world: &World,
-    _pos: BlockPos,
-    _direction: Direction,
-) -> bool {
-    // TODO: this does a whole bunch of physics shape checks for waterlogged blocks
-    // that i honestly cannot be bothered to implement right now
-
-    // see BlockBehavior.isFaceSturdy in the decompiled minecraft source
-
-    // also, this probably should be in a module other than fluids.rs
-
-    false
+    // is_face_sturdy
+    SupportType::Full.is_supporting(block_state, adjacent_pos, direction)
 }
